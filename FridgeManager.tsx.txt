@@ -1,0 +1,282 @@
+import React, { useState, useMemo } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
+
+// Định nghĩa kiểu dữ liệu cho thực phẩm
+interface FoodItem {
+  id: string;
+  name: string;
+  category: 'dong' | 'mat' | 'rau_cu'; // Ngăn đông, Ngăn mát, Ngăn rau củ
+  quantity: string;
+  daysLeft: number; // Số ngày còn lại trước khi hết hạn (âm nghĩa là đã quá hạn)
+  expiryDate: string;
+  emoji: string; // Emoji đại diện trực quan cho thực phẩm
+}
+
+// Dữ liệu mẫu phù hợp với tủ lạnh của sinh viên ở ghép
+const INITIAL_FOOD_ITEMS: FoodItem[] = [
+  { id: '1', name: 'Thịt bò phi lê', category: 'dong', quantity: '500g', daysLeft: 15, expiryDate: '18/06', emoji: '🥩' },
+  { id: '2', name: 'Kem socola', category: 'dong', quantity: '1 hộp', daysLeft: 30, expiryDate: '03/07', emoji: '🍦' },
+  { id: '3', name: 'Sữa tươi', category: 'mat', quantity: '1 hộp 1L', daysLeft: 2, expiryDate: '05/06', emoji: '🥛' },
+  { id: '4', name: 'Trứng gà', category: 'mat', quantity: '6 quả', daysLeft: 5, expiryDate: '08/06', emoji: '🥚' },
+  { id: '5', name: 'Cà chua', category: 'rau_cu', quantity: '4 quả', daysLeft: 1, expiryDate: '04/06', emoji: '🍅' },
+  { id: '6', name: 'Xà lách', category: 'rau_cu', quantity: '1 cây', daysLeft: -1, expiryDate: '02/06', emoji: '🥬' },
+  { id: '7', name: 'Sữa chua', category: 'mat', quantity: '2 hũ', daysLeft: -3, expiryDate: '31/05', emoji: '🥛' },
+];
+
+export default function FridgeManager() {
+  // Bộ lọc: null nghĩa là hiển thị tất cả, hoặc lọc theo 'dong' | 'mat' | 'rau_cu'
+  const [selectedCategory, setSelectedCategory] = useState<'dong' | 'mat' | 'rau_cu' | null>(null);
+
+  // Bộ lọc nhanh 3 nút
+  const filterCategories = [
+    { key: 'dong', label: '❄️ Ngăn đông' },
+    { key: 'mat', label: '💧 Ngăn mát' },
+    { key: 'rau_cu', label: '🥦 Ngăn rau củ' },
+  ] as const;
+
+  // Xử lý lọc danh sách thực phẩm dựa trên nút được chọn
+  const filteredItems = useMemo(() => {
+    if (!selectedCategory) return INITIAL_FOOD_ITEMS;
+    return INITIAL_FOOD_ITEMS.filter(item => item.category === selectedCategory);
+  }, [selectedCategory]);
+
+  // Hàm xác định trạng thái và màu sắc dựa trên số ngày còn lại
+  const getStatusStyle = (daysLeft: number) => {
+    if (daysLeft < 0) {
+      return {
+        bg: '#FFEBEE',       // Đỏ nhạt
+        border: '#FFCDD2',   // Viền đỏ
+        text: '#C62828',     // Chữ đỏ đậm
+        statusText: 'Quá hạn',
+      };
+    } else if (daysLeft <= 3) {
+      return {
+        bg: '#FFFDE7',       // Vàng nhạt
+        border: '#FFF9C4',   // Viền vàng
+        text: '#F57F17',     // Chữ vàng đậm
+        statusText: `Còn ${daysLeft} ngày`,
+      };
+    } else {
+      return {
+        bg: '#E8F5E9',       // Xanh lá nhạt
+        border: '#C8E6C9',   // Viền xanh lá
+        text: '#2E7D32',     // Chữ xanh đậm
+        statusText: 'Tươi ngon',
+      };
+    }
+  };
+
+  // Hàm render từng thẻ thực phẩm
+  const renderFoodCard = ({ item }: { item: FoodItem }) => {
+    const status = getStatusStyle(item.daysLeft);
+
+    return (
+      <View style={[styles.card, { backgroundColor: status.bg, borderColor: status.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.emoji}>{item.emoji}</Text>
+          <View style={[styles.badge, { backgroundColor: status.text + '20' }]}>
+            <Text style={[styles.badgeText, { color: status.text }]}>
+              {status.statusText}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.foodName} numberOfLines={1}>{item.name}</Text>
+        
+        <View style={styles.cardFooter}>
+          <Text style={styles.quantityText}>SL: {item.quantity}</Text>
+          <Text style={styles.expiryText}>Hạn: {item.expiryDate}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Tiêu đề ứng dụng */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Tủ lạnh FreshKeep 🧊</Text>
+        <Text style={styles.subtitle}>Xin chào Thảo! Hôm nay tủ lạnh có gì?</Text>
+      </View>
+
+      {/* Bộ lọc nhanh 3 nút */}
+      <View style={styles.filterContainer}>
+        {filterCategories.map(cat => {
+          const isActive = selectedCategory === cat.key;
+          return (
+            <TouchableOpacity
+              key={cat.key}
+              style={[styles.filterButton, isActive && styles.activeFilterButton]}
+              onPress={() => setSelectedCategory(isActive ? null : cat.key)}
+            >
+              <Text style={[styles.filterButtonText, isActive && styles.activeFilterButtonText]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Nút reset bộ lọc */}
+      {selectedCategory && (
+        <TouchableOpacity style={styles.resetButton} onPress={() => setSelectedCategory(null)}>
+          <Text style={styles.resetButtonText}>Xem tất cả thực phẩm</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Danh sách thực phẩm dạng lưới (Grid) */}
+      <FlatList
+        data={filteredItems}
+        keyExtractor={item => item.id}
+        renderItem={renderFoodCard}
+        numColumns={2}
+        contentContainerStyle={styles.listContainer}
+        columnWrapperStyle={styles.columnWrapper}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Ngăn này hiện tại đang trống rỗng 🍃</Text>
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 4,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginVertical: 12,
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    // Hiệu ứng đổ bóng nhẹ cho iOS & Android
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  activeFilterButton: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4A4A4A',
+  },
+  activeFilterButtonText: {
+    color: '#FFFFFF',
+  },
+  resetButton: {
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  resetButtonText: {
+    color: '#007AFF',
+    fontSize: 13,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  card: {
+    flex: 0.48, // Chiếm gần một nửa chiều rộng để tạo grid 2 cột cân đối
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    minHeight: 120,
+    justifyContent: 'space-between',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  emoji: {
+    fontSize: 28,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  foodName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginVertical: 8,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quantityText: {
+    fontSize: 11,
+    color: '#555555',
+  },
+  expiryText: {
+    fontSize: 11,
+    color: '#555555',
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: '#888888',
+    fontSize: 14,
+  },
+});
