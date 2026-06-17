@@ -162,3 +162,14 @@ VALUES
 (2,6,2),
 (2,7,1),
 (3,3,1);
+
+
+
+
+
+INSERT INTO ThanhVienTuLanh
+(MaNguoiDung,MaTuLanh,VaiTro)
+VALUES
+(1,1,N'Chu'),
+(2,1,N'ThanhVien'),
+(3,1,N'ThanhVien');
