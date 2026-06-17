@@ -110,3 +110,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server FreshKeep đang hoạt động tại cổng ${PORT}`);
 });
+
+
+const shareRoutes = require("./routes/share");
+app.use("/share", shareRoutes);
