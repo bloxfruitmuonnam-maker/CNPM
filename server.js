@@ -105,12 +105,16 @@ app.get('/api/foods', async (req, res) => {
 });
 
 
-// Khởi chạy Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server FreshKeep đang hoạt động tại cổng ${PORT}`);
-});
 
 
 const shareRoutes = require("./routes/share");
+// Đăng ký route chia sẻ
 app.use("/share", shareRoutes);
+
+
+
+// Khởi chạy Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server FreshKeep đang hoạt động tại cổng ${PORT}`);
+});
