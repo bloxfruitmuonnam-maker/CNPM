@@ -139,3 +139,15 @@ CREATE TABLE ThanhVienTuLanh
     FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung),
     FOREIGN KEY (MaTuLanh) REFERENCES TuLanh(MaTuLanh)
 );
+
+
+
+
+CREATE TABLE LoiMoiThamGia
+(
+    MaLoiMoi INT IDENTITY(1,1),
+    MaNguoiGui INT,
+    MaNguoiNhan INT,
+    MaTuLanh INT,
+    TrangThai NVARCHAR(20)
+);
