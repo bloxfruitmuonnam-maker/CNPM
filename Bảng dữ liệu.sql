@@ -123,3 +123,19 @@ CREATE TABLE ChiTietCongThuc(
     FOREIGN KEY (MaThucPham)
     REFERENCES ThucPham(MaThucPham)
 );
+
+
+
+
+
+CREATE TABLE ThanhVienTuLanh
+(
+    MaThanhVien INT IDENTITY(1,1) PRIMARY KEY,
+    MaNguoiDung INT NOT NULL,
+    MaTuLanh INT NOT NULL,
+    VaiTro NVARCHAR(20) DEFAULT N'ThanhVien',
+    NgayThamGia DATE DEFAULT GETDATE(),
+
+    FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung),
+    FOREIGN KEY (MaTuLanh) REFERENCES TuLanh(MaTuLanh)
+);
