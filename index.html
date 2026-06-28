@@ -1874,22 +1874,22 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FreshKeepApp />);
     </script>
-<script src="https://sf-cdn.coze.com/obj/unpkg-va/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/oversea/index.js"></script>
+<script src="https://sf-cdn.coze.com/obj/coze-web-sdk/10/coze-web-sdk.js"></script>
 <script>
-  new CozeWebSDK.WebChatClient({
+  new CozeWebSDK.WebChat({
     config: {
       bot_id: '7654772159012700165',
     },
-    componentProps: {
-      title: 'Coze',
-    },
     auth: {
       type: 'token',
-      token: 'pat_********',
-      onRefreshToken: function () {
-        return 'pat_********'
-      }
-    }
+      token: 'pat_pTd05TlR2v75H3IVbFZfUuhVMJDaTEUefyN9p13rfLO79BlAJGl5ezleEpBQGQVZ',
+    },
+    componentProps: {
+      title: 'Vua Ẩm Thực AI',
+      chatButtonProps: {
+        icon: 'https://img.icons8.com/emoji/96/orange-emoji.png',
+      },
+    },
   });
 </script>
       }
