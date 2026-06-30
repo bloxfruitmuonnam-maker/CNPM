@@ -1875,20 +1875,26 @@
     </script>
 <script src="https://sf-cdn.coze.com/obj/coze-web-sdk/10/coze-web-sdk.js"></script>
 <script>
-  new CozeWebSDK.WebChat({
-    config: {
-      bot_id: '7654772159012700165',
-    },
-    auth: {
-      type: 'token',
-      token: 'pat_pTd05TlR2v75H3IVbFZfUuhVMJDaTEUefyN9p13rfLO79BlAJGl5ezleEpBQGQVZ',
-    },
-    componentProps: {
-      title: 'Vua Ẩm Thực AI',
-      chatButtonProps: {
-        icon: 'https://img.icons8.com/emoji/96/orange-emoji.png',
-      },
-    },
+  window.addEventListener('load', function() {
+    if (typeof CozeWebSDK !== 'undefined') {
+      new CozeWebSDK.WebChat({
+        config: {
+          bot_id: '7654772159012700165',
+        },
+        auth: {
+          type: 'token',
+          token: 'pat_pTd05TlR2v75H3IVbFZfUuhVMJDaTEUefyN9p13rfLO79BlAJGl5ezleEpBQGQVZ',
+        },
+        componentProps: {
+          title: 'Vua Ẩm Thực AI',
+          chatButtonProps: {
+            icon: 'https://img.icons8.com/emoji/96/orange-emoji.png',
+          },
+        },
+      });
+    } else {
+      console.error('Chưa tải được thư viện CozeWebSDK!');
+    }
   });
 </script>
 </body>
