@@ -1873,23 +1873,9 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FreshKeepApp />);
     </script>
-<script src="https://sf-cdn.coze.com/obj/unpkg-va/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/oversea/index.js"></script>
-<script>
-  new CozeWebSDK.WebChatClient({
-    config: {
-      bot_id: '7654772159012700165',
-    },
-    componentProps: {
-      title: 'Coze',
-    },
-    auth: {
-      type: 'token',
-      token: 'pat_F3BO8CCc2EEEHDDUsjBcpXUwcU1yfwCxfjIf8OxCO9ih0GBrquguhCwWkc90ylXy',
-      onRefreshToken: function () {
-        return 'pat_F3BO8CCc2EEEHDDUsjBcpXUwcU1yfwCxfjIf8OxCO9ih0GBrquguhCwWkc90ylXy'
-      }
-    }
-  });
-</script>
+<iframe
+  src="https://www.coze.com/store/agent/7654772159012700165"
+  style="position:fixed; bottom:20px; right:20px; width:400px; height:600px; border:none; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.2); z-index:9999;"
+></iframe>
 </body>
 </html>
