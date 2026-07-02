@@ -55,6 +55,40 @@
                 transform: translateY(0);
             }
         }
+        .floating-icon {
+            animation: float-icon 3s ease-in-out infinite;
+        }
+        @keyframes float-icon {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(255, 165, 0, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0);
+            }
+        }
+        .mini-chat-slide-in {
+            animation: slideInUp 0.3s ease-out;
+        }
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -84,7 +118,7 @@
         const RecipeDatabase = {
             'Gà xào ớt chuông và hành tây': {
                 ingredients: ['gà', 'ớt chuông', 'hành tây'],
-                instructions: '1. Thái gà thành khúc nhỏ, ớt chuông thành sợi\n2. Phi hành tây với dầu nóng\n3. Xào gà trên lửa lớn đến khi ngoài vàng\n4. Thêm ớt chuông, nêm gia vị và xào chín',
+                instructions: '1. Thái gà thành khúc nhỏ, ớt chuông thành sợi\n2. Phi hành tây với dầu nóng\n3. Xào gà trên lửa lớn đến khi ngoài vàng\n4. Thêm ớt chuông cuối cùng để giữ độ giòn',
                 priority: 10,
                 nutrition: {
                     calories: 280,
@@ -407,12 +441,131 @@
             { id: '4', name: 'Ớt chuông đỏ', quantity: '3 quả', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
             { id: '6', name: 'Hành tây', quantity: '2 củ', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
             { id: '7', name: 'Bông cải xanh', quantity: '1 cây', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
-            { id: '8', name: 'Cà rốt', quantity: '500g', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+            { id: '8', name: 'Cà rốt', quantity: '500g', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
         ];
+
+        function MinAIChatWidget({ items, onClose }) {
+            const [chatMessages, setChatMessages] = useState([
+                { role: 'ai', text: '🤖 Xin chào! Có thể tôi giúp bạn?\n💡 Hãy hỏi:\n• "Gợi ý công thức"\n• "Lập kế hoạch tuần"\n• "Còn gì"' }
+            ]);
+            const [inputValue, setInputValue] = useState('');
+            const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+            const handleSendMessage = () => {
+                if (!inputValue.trim()) return;
+
+                const userMessage = inputValue.toLowerCase().trim();
+                setChatMessages(prev => [...prev, { role: 'user', text: inputValue, timestamp: new Date() }]);
+                setInputValue('');
+
+                setTimeout(() => {
+                    if (userMessage.includes('gợi ý công thức') || userMessage.includes('gợi ý')) {
+                        const recommendations = AIRecipeAnalyzer.analyzeIngredients(items);
+                        if (recommendations.length === 0) {
+                            setChatMessages(prev => [...prev, { 
+                                role: 'ai', 
+                                text: '😔 Không có nguyên liệu phù hợp. Thêm thêm nguyên liệu nhé!',
+                                timestamp: new Date()
+                            }]);
+                        } else {
+                            const topRecipe = recommendations[0];
+                            setChatMessages(prev => [...prev, { 
+                                role: 'ai', 
+                                text: `🍳 ${topRecipe.name}\n✅ ${topRecipe.matchPercentage}% nguyên liệu\n⏱️ ${topRecipe.data.cookTime} phút`,
+                                timestamp: new Date(),
+                                recipe: topRecipe
+                            }]);
+                            setSelectedRecipe(topRecipe);
+                        }
+                    } else if (userMessage.includes('tuần') || userMessage.includes('kế hoạch')) {
+                        const plan = MealPlanGenerator.generateWeeklyPlan(items);
+                        const topRecipes = plan.slice(0, 3);
+                        let text = '📋 Kế hoạch tuần:\n';
+                        topRecipes.forEach(meal => {
+                            text += `${meal.day}: ${meal.recipe}\n`;
+                        });
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: text,
+                            timestamp: new Date()
+                        }]);
+                    } else if (userMessage.includes('còn gì')) {
+                        const expiringItems = items.filter(item => ExpiryEngine.calculate(item).daysRemaining <= 3);
+                        let text = `📦 Tổng: ${items.length} nguyên liệu\n\n🟡 Sắp hết hạn:\n`;
+                        expiringItems.forEach(i => {
+                            const expiry = ExpiryEngine.calculate(i);
+                            text += `• ${i.name} (${expiry.daysRemaining} ngày)\n`;
+                        });
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: text,
+                            timestamp: new Date()
+                        }]);
+                    } else {
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: '💡 Hãy hỏi:\n• "Gợi ý công thức"\n• "Lập kế hoạch tuần"\n• "Còn gì"',
+                            timestamp: new Date()
+                        }]);
+                    }
+                }, 300);
+            };
+
+            return (
+                <div className="mini-chat-slide-in fixed bottom-24 right-6 w-80 bg-white rounded-2xl border-2 border-orange-300 shadow-2xl flex flex-col h-96 z-40">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-orange-400 to-amber-400 text-white px-4 py-3 rounded-t-xl flex justify-between items-center">
+                        <span className="font-bold text-sm">🤖 AI Chef</span>
+                        <button onClick={onClose} className="text-xl hover:scale-125 transition">✕</button>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar">
+                        {chatMessages.map((msg, idx) => (
+                            <div key={idx} className={`chat-fade-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[220px] px-3 py-2 rounded-lg text-xs ${
+                                    msg.role === 'user' 
+                                        ? 'bg-orange-500 text-white rounded-br-none' 
+                                        : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                                }`}>
+                                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Recipe Preview */}
+                    {selectedRecipe && (
+                        <div className="border-t px-3 py-2 bg-orange-50 text-xs">
+                            <p className="font-bold text-orange-700 mb-1">🍳 {selectedRecipe.name}</p>
+                            <p className="text-gray-600">📊 Calo: {selectedRecipe.data.nutrition.calories} kcal | 💪 Protein: {selectedRecipe.data.nutrition.protein}g</p>
+                        </div>
+                    )}
+
+                    {/* Input */}
+                    <div className="border-t p-2 flex gap-1">
+                        <input
+                            type="text"
+                            placeholder="Hỏi AI..."
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            className="flex-1 px-2 py-1 border border-orange-300 rounded-lg outline-none focus:border-orange-500 text-xs"
+                        />
+                        <button
+                            onClick={handleSendMessage}
+                            className="bg-orange-400 hover:bg-orange-500 text-white px-2 py-1 rounded-lg font-bold text-xs transition"
+                        >
+                            ↓
+                        </button>
+                    </div>
+                </div>
+            );
+        }
 
         function AIRecipeChatBox({ items }) {
             const [chatMessages, setChatMessages] = useState([
-                { role: 'ai', text: '🤖 Xin chào! Tôi là AI Chef Assistant. Tôi có thể:\n✓ Phân tích nguyên liệu của bạn\n✓ Gợi ý công thức nấu ăn chi tiết\n✓ Cung cấp thông tin dinh dưỡng đầy đủ\n✓ Lập kế hoạch ăn uống theo tuần\n\nHãy hỏi tôi: "Gợi ý công thức" hoặc "Lập kế hoạch tuần"', timestamp: new Date() }
+                { role: 'ai', text: '🤖 Xin chào! Tôi là AI Chef Assistant. Tôi có thể:\n✓ Phân tích nguyên liệu của bạn\n✓ Gợi ý công thức nấu ăn chi tiết\n✓ Cung cấp giá trị dinh dưỡng\n✓ Lập kế hoạch ăn uống theo tuần' }
             ]);
             const [inputValue, setInputValue] = useState('');
             const [selectedRecipe, setSelectedRecipe] = useState(null);
@@ -439,7 +592,7 @@
                             const topRecipe = recommendations[0];
                             setChatMessages(prev => [...prev, { 
                                 role: 'ai', 
-                                text: `🍳 Dựa trên nguyên liệu của bạn, tôi gợi ý món: "${topRecipe.name}" với khả năng sử dụng ${topRecipe.matchPercentage}%\n\nBạn muốn xem chi tiết công thức này không?`,
+                                text: `🍳 Dựa trên nguyên liệu của bạn, tôi gợi ý món: "${topRecipe.name}" với khả năng sử dụng ${topRecipe.matchPercentage}%\n\nBạn muốn xem chi tiết công thức không?`,
                                 timestamp: new Date(),
                                 action: 'showRecipe',
                                 recipe: topRecipe
@@ -452,7 +605,7 @@
                         setWeeklyPlan({ plan, nutrition });
                         setChatMessages(prev => [...prev, { 
                             role: 'ai', 
-                            text: `📋 Đã tạo kế hoạch ăn uống cho tuần này!\n\n📊 Thống kê tuần:\n• Tổng calo: ${nutrition.totals.calories} kcal\n• Bình quân/ngày: ${nutrition.averages.caloriesPerDay} kcal\n• Protein: ${nutrition.totals.protein}g (${nutrition.averages.proteinPerDay}g/ngày)`,
+                            text: `📋 Đã tạo kế hoạch ăn uống cho tuần này!\n\n📊 Thống kê tuần:\n• Tổng calo: ${nutrition.totals.calories} kcal\n• Bình quân/ngày: ${nutrition.averages.caloriesPerDay} kcal\n• Protein/ngày: ${nutrition.averages.proteinPerDay}g`,
                             timestamp: new Date(),
                             action: 'showPlan'
                         }]);
@@ -468,13 +621,13 @@
                         const freshItems = items.filter(item => ExpiryEngine.calculate(item).daysRemaining > 3);
                         setChatMessages(prev => [...prev, { 
                             role: 'ai', 
-                            text: `📦 Tổng: ${items.length} nguyên liệu\n\n🟡 Sắp hết hạn (${expiringItems.length}):\n${expiringItems.map(i => `• ${i.name} (${ExpiryEngine.calculate(i).daysRemaining} ngày)`).join('\n')}\n\n🟢 Còn tươi (${freshItems.length}):\n${freshItems.slice(0, 3).map(i => `• ${i.name}`).join('\n')}${freshItems.length > 3 ? `\n... và ${freshItems.length - 3} nguyên liệu khác` : ''}`,
+                            text: `📦 Tổng: ${items.length} nguyên liệu\n\n🟡 Sắp hết hạn (${expiringItems.length}):\n${expiringItems.map(i => `• ${i.name} (${ExpiryEngine.calculate(i).daysRemaining} ngày)`).join('\n')}\n\n🟢 Tươi mới (${freshItems.length}):\n${freshItems.map(i => `• ${i.name}`).join('\n')}`,
                             timestamp: new Date()
                         }]);
                     } else {
                         setChatMessages(prev => [...prev, { 
                             role: 'ai', 
-                            text: `💡 Tôi có thể giúp bạn:\n• "Gợi ý công thức" - dựa trên nguyên liệu hiện có\n• "Lập kế hoạch tuần" - lên menu cho cả tuần\n• "Dinh dưỡng" - xem chi tiết giá trị dinh dưỡng\n• "Tôi còn gì" - kiểm tra nguyên liệu\n\nHãy thử một trong những lệnh này!`,
+                            text: `💡 Tôi có thể giúp bạn:\n• "Gợi ý công thức" - dựa trên nguyên liệu hiện có\n• "Lập kế hoạch tuần" - lên menu cho cả tuần\n• "Dinh dưỡng" - xem giá trị dinh dưỡng\n• "Còn gì" - kiểm tra nguyên liệu sắp hết hạn`,
                             timestamp: new Date()
                         }]);
                     }
@@ -533,7 +686,7 @@
                             
                             <button 
                                 onClick={() => setShowNutrition(!showNutrition)}
-                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white text-xs py-2 rounded-lg font-bold transition-all transform hover:scale-105 shadow-md"
+                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white text-xs py-2 rounded-lg font-bold transition-all transform hover:scale-105"
                             >
                                 {showNutrition ? '📊 Ẩn' : '📊 Xem'} Dinh dưỡng chi tiết
                             </button>
@@ -576,7 +729,7 @@
                         />
                         <button
                             onClick={handleSendMessage}
-                            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-full font-bold text-sm transition-all transform hover:scale-110 shadow-lg"
+                            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-full font-bold text-sm transition-all transform hover:scale-105"
                         >
                             📤 Gửi
                         </button>
@@ -588,6 +741,7 @@
         function FreshKeepApp() {
             const [items, setItems] = useState(initialFoodItems);
             const [showAIChat, setShowAIChat] = useState(false);
+            const [showMiniChat, setShowMiniChat] = useState(false);
 
             return (
                 <div className="min-h-screen p-6 bg-gradient-to-br from-yellow-50/50 via-orange-50/30 to-pink-50/40">
@@ -603,13 +757,13 @@
                         {/* Main Content */}
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                             {/* Current Items List */}
-                            <div className="lg:col-span-1 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl border-2 border-blue-300 p-6 h-[500px] overflow-y-auto shadow-lg hover:shadow-xl transition-all">
+                            <div className="lg:col-span-1 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl border-2 border-blue-300 p-6 h-[500px] overflow-y-auto shadow-lg hover:shadow-xl transition-shadow">
                                 <h2 className="text-xl font-black text-blue-900 mb-4 sticky top-0 bg-gradient-to-r from-blue-50 to-cyan-50 pb-2">📦 Nguyên liệu hiện có</h2>
                                 <div className="space-y-2">
                                     {items.map(item => {
                                         const expiry = ExpiryEngine.calculate(item);
                                         return (
-                                            <div key={item.id} className={`p-3 rounded-xl border-l-4 ${expiry.badgeStyle.bgColor} ${expiry.badgeStyle.borderColor} shadow-sm hover:shadow-md transition-all transform hover:scale-105`}>
+                                            <div key={item.id} className={`p-3 rounded-xl border-l-4 ${expiry.badgeStyle.bgColor} ${expiry.badgeStyle.borderColor} shadow-sm hover:shadow-md transition-shadow`}>
                                                 <p className="font-bold text-sm text-gray-900">{item.name}</p>
                                                 <p className={`text-xs font-bold ${expiry.badgeStyle.textColor}`}>{expiry.label}</p>
                                                 <p className="text-xs text-gray-600">SL: {item.quantity}</p>
@@ -624,15 +778,15 @@
                                 {showAIChat ? (
                                     <AIRecipeChatBox items={items} />
                                 ) : (
-                                    <div className="bg-gradient-to-br from-purple-100 via-blue-100 to-cyan-100 rounded-3xl border-4 border-dashed border-purple-400 h-full flex flex-col items-center justify-center p-8 text-center shadow-2xl hover:shadow-3xl transition-all">
+                                    <div className="bg-gradient-to-br from-purple-100 via-blue-100 to-cyan-100 rounded-3xl border-4 border-dashed border-purple-400 h-full flex flex-col items-center justify-center p-8">
                                         <div className="text-7xl mb-4 animate-bounce">🤖</div>
                                         <h3 className="text-3xl font-black text-purple-800 mb-3">AI Chef Assistant</h3>
                                         <p className="text-gray-700 mb-6 max-w-md leading-relaxed">
-                                            Bật AI để nhận <span className="font-bold text-purple-800">gợi ý công thức</span>, <span className="font-bold text-blue-800">phân tích dinh dưỡng</span> chi tiết và <span className="font-bold text-cyan-800">lập kế hoạch ăn uống tuần</span> dựa trên nguyên liệu sắp hết hạn
+                                            Bật AI để nhận <span className="font-bold text-purple-800">gợi ý công thức</span>, <span className="font-bold text-blue-800">phân tích dinh dưỡng</span> và <span className="font-bold text-cyan-800">lập kế hoạch ăn uống</span>
                                         </p>
                                         <button
                                             onClick={() => setShowAIChat(true)}
-                                            className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 hover:from-purple-600 hover:via-blue-600 hover:to-cyan-600 text-white px-10 py-4 rounded-full font-black text-lg transition-all transform hover:scale-110 shadow-xl hover:shadow-2xl"
+                                            className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 hover:from-purple-600 hover:via-blue-600 hover:to-cyan-600 text-white px-10 py-4 rounded-full font-black text-lg transition-all transform hover:scale-110 shadow-lg"
                                         >
                                             💬 Bật AI Assistant
                                         </button>
@@ -641,6 +795,17 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* Floating Orange Icon - Mini Chat Trigger */}
+                    <button
+                        onClick={() => setShowMiniChat(!showMiniChat)}
+                        className={`floating-icon pulse-ring fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-4xl rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-110 z-50 border-4 border-white`}
+                    >
+                        🍊
+                    </button>
+
+                    {/* Mini Chat Widget */}
+                    {showMiniChat && <MinAIChatWidget items={items} onClose={() => setShowMiniChat(false)} />}
                 </div>
             );
         }
