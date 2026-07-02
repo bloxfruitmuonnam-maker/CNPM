@@ -19,7 +19,6 @@
             background: radial-gradient(circle at top left, #FFFDF9 0%, #FFF3DA 40%, #E6FFFA 100%);
             overflow-x: hidden;
         }
-        /* Hoạt họa bồng bềnh tự nhiên */
         .floating-food {
             animation: float-animation 6s ease-in-out infinite;
             user-select: none;
@@ -29,7 +28,6 @@
             0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
             50% { transform: translateY(-18px) rotate(10deg) scale(1.05); }
         }
-        /* Hiệu ứng nhấp nháy cảnh báo động nguy hiểm */
         .alert-pulse {
             animation: pulse-glow 2.5s infinite;
         }
@@ -37,13 +35,25 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(0.97); box-shadow: 0 0 15px rgba(239, 68, 68, 0.55); }
         }
-        /* Ẩn thanh cuộn trình duyệt */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        .chat-fade-in {
+            animation: fadeInUp 0.4s ease-out;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -54,124 +64,255 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        /* ==========================================================
-           1. DATA LAYER: DANH MỤC CHUẨN & DỮ LIỆU BAN ĐẦU (MOCK DB)
-           ========================================================= */
-        const initialFoodItems = [
-            { id: '1', name: 'Sữa tươi TH True Milk', quantity: '2 hộp 1L', category: 'Sữa & Đồ hộp', compartment: 'Cánh tủ', expiryDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
-            { id: '2', name: 'Thịt bò Mỹ phi lê', quantity: '500g', category: 'Thịt & Hải sản', compartment: 'Ngăn đông', expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
-            { id: '3', name: 'Ức gà phi lê', quantity: '1kg', category: 'Thịt & Hải sản', compartment: 'Ngăn đông', expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
-            { id: '4', name: 'Ớt chuông đỏ', quantity: '3 quả', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
-            { id: '5', name: 'Sữa bột ăn dặm cho bé', quantity: '1 hộp', category: 'Sữa & Đồ hộp', compartment: 'Ngăn đồ ăn dặm', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: true, isCustom: false },
-            { id: '6', name: 'Hành tây', quantity: '2 củ', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
-            { id: '7', name: 'Bông cải xanh', quantity: '1 cây', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false }
-        ];
+        /* ============================================================
+           NUTRITIONAL DATABASE & RECIPE ENGINE WITH AI
+           ============================================================ */
+        
+        const NutritionDatabase = {
+            'Thịt bò Mỹ phi lê': { calories: 250, protein: 26, carbs: 0, fat: 15, fiber: 0, calcium: 12, iron: 2.6 },
+            'Ức gà phi lê': { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, calcium: 11, iron: 0.9 },
+            'Ớt chuông đỏ': { calories: 31, protein: 1, carbs: 6, fat: 0.3, fiber: 2, calcium: 7, iron: 0.4 },
+            'Hành tây': { calories: 40, protein: 1.1, carbs: 9, fat: 0.1, fiber: 1.7, calcium: 23, iron: 0.2 },
+            'Bông cải xanh': { calories: 34, protein: 3.7, carbs: 7, fat: 0.4, fiber: 2.4, calcium: 47, iron: 0.7 },
+            'Sữa tươi TH True Milk': { calories: 66, protein: 3.3, carbs: 4.8, fat: 3.6, fiber: 0, calcium: 113, iron: 0 },
+            'Cà rốt': { calories: 41, protein: 0.9, carbs: 10, fat: 0.2, fiber: 2.8, calcium: 33, iron: 0.3 },
+            'Trứng': { calories: 155, protein: 13, carbs: 1.1, fat: 11, fiber: 0, calcium: 56, iron: 1.8 },
+            'Tôm': { calories: 99, protein: 24, carbs: 0, fat: 0.3, fiber: 0, calcium: 52, iron: 0.3 },
+            'Cá hồi': { calories: 208, protein: 20, carbs: 0, fat: 13, fiber: 0, calcium: 12, iron: 0.8 }
+        };
 
-        const monthlyHistoryData = [
-            { month: 'Tháng 3', consumed: 72, wasted: 28 },
-            { month: 'Tháng 4', consumed: 80, wasted: 20 },
-            { month: 'Tháng 5', consumed: 88, wasted: 12 },
-            { month: 'Tháng 6', consumed: 92, wasted: 8 }
-        ];
-
-        const RecipeCatalog = [
-            { name: 'Gà xào sả ớt', requiredIngredients: ['gà', 'sả', 'ớt'], desc: 'Món ăn đậm đà đưa cơm từ thịt gà thơm phức xào cay nồng.' },
-            { name: 'Gà xào ớt chuông và hành tây', requiredIngredients: ['gà', 'ớt chuông', 'hành tây'], desc: 'Hương vị giòn ngọt thanh mát, dồi dào vitamin.' },
-            { name: 'Súp gà nấm', requiredIngredients: ['gà', 'nấm'], desc: 'Món súp bồi bổ ấm nóng, dễ tiêu hóa cho cả em bé và gia đình.' },
-            { name: 'Bò lúc lắc', requiredIngredients: ['bò', 'hành tây', 'ớt chuông'], desc: 'Thịt bò xào mềm ngon thấm vị cùng hành tây giòn ngọt.' },
-            { name: 'Bò bít tết kèm khoai tây', requiredIngredients: ['bò', 'khoai tây'], desc: 'Món Âu sang trọng bổ dưỡng ăn kèm khoai tây chiên giòn rụm.' },
-            { name: 'Canh thịt bò hầm khoai tây cà rốt', requiredIngredients: ['bò', 'khoai tây', 'cà rốt'], desc: 'Món canh bổ dưỡng hầm nhừ ngọt nước thích hợp cho gia đình.' },
-            { name: 'Lẩu hải sản Thái Lan', requiredIngredients: ['tôm', 'mực', 'nghêu'], desc: 'Chua cay sảng khoái tụ tập họp mặt gia đình cuối tuần.' },
-            { name: 'Hải sản xào thập cẩm', requiredIngredients: ['mực', 'tôm', 'súp lơ', 'cà rốt', 'bông cải'], desc: 'Hải sản xào thập cẩm đầy màu sắc dinh dưỡng cân đối.' },
-            { name: 'Trứng cuộn phô mai', requiredIngredients: ['trứng', 'bơ', 'sữa', 'phô mai'], desc: 'Món mềm xốp béo ngậy cực kỳ yêu thích của trẻ nhỏ.' },
-            { name: 'Bánh nướng bơ trứng', requiredIngredients: ['trứng', 'bơ', 'sữa'], desc: 'Bánh nướng bơ trứng đơn giản, tiện lợi cho bữa sáng.' },
-            { name: 'Cơm chiên Dương Châu', requiredIngredients: ['trứng', 'cơm', 'xúc xích'], desc: 'Hạt cơm săn chắc kết hợp cùng xúc xích và trứng chiên giòn thơm.' }
-        ];
-
-        const BasicDishes = [
-            { name: 'Canh sườn hầm củ quả', category: 'Các món canh', desc: 'Canh sườn hầm ngọt thanh cùng khoai tây, cà rốt.' },
-            { name: 'Canh chua cá lóc', category: 'Các món canh', desc: 'Món canh chua đậm đà Nam Bộ giải nhiệt mùa hè.' },
-            { name: 'Canh cua rau đay', category: 'Các món canh', desc: 'Canh cua đồng thanh mát ăn kèm cà pháo giòn.' },
-            { name: 'Thịt kho tàu', category: 'Các món mặn', desc: 'Thịt kho nước dừa rục mềm cùng trứng vịt.' },
-            { name: 'Cá kho tộ', category: 'Các món mặn', desc: 'Cá lóc kho tộ sền sệt, đậm đà vị tiêu ớt.' },
-            { name: 'Thịt ba chỉ rim mắm ruốc', category: 'Các món mặn', desc: 'Hương vị cay nồng, mặn ngọt cực kỳ đưa cơm.' },
-            { name: 'Cánh gà chiên nước mắm', category: 'Các món mặn', desc: 'Vỏ ngoài giòn, ngập trong nước sốt tỏi mắm ngọt.' },
-            { name: 'Sườn xào chua ngọt', category: 'Các món mặn', desc: 'Sườn non rim sốt chua ngọt hài hòa.' }
-        ];
-
-        /* ==========================================================
-           2. APPLICATION LAYER: DOMAIN LOGIC SERVICES
-           ========================================================== */
-
-        // 2.1. Notification Engine: Đảm bảo hoạt động an toàn bất kể chính sách bảo mật trình duyệt
-        const NotificationEngine = {
-            isSupported: () => {
-                return ('Notification' in window) && window.isSecureContext;
+        const RecipeDatabase = {
+            'Gà xào ớt chuông và hành tây': {
+                ingredients: ['gà', 'ớt chuông', 'hành tây'],
+                instructions: '1. Thái gà thành khúc nhỏ, ớt chuông thành sợi\n2. Phi hành tây với dầu nóng\n3. Xào gà trên lửa lớn đến khi ngoài vàng\n4. Thêm ớt chuông, nêm gia vị và xào chín',
+                priority: 10,
+                nutrition: {
+                    calories: 280,
+                    protein: 35,
+                    carbs: 8,
+                    fat: 12,
+                    fiber: 1.5,
+                    calcium: 25,
+                    iron: 1.2,
+                    servings: 2
+                },
+                cookTime: 20,
+                difficulty: 'Dễ'
             },
-
-            getPermissionState: () => {
-                if (!NotificationEngine.isSupported()) return 'unsupported';
-                return Notification.permission;
+            'Bò lúc lắc': {
+                ingredients: ['bò', 'hành tây', 'ớt chuông'],
+                instructions: '1. Cắt bò thành khúc 2cm\n2. Hành tây, ớt chuông thái hạt lựu\n3. Nêm bò với muối, tiêu\n4. Xào nhanh trên lửa rất lớn 2-3 phút',
+                priority: 9,
+                nutrition: {
+                    calories: 320,
+                    protein: 38,
+                    carbs: 12,
+                    fat: 14,
+                    fiber: 2,
+                    calcium: 30,
+                    iron: 2.8,
+                    servings: 2
+                },
+                cookTime: 15,
+                difficulty: 'Dễ'
             },
-
-            requestPermission: () => {
-                if (!NotificationEngine.isSupported()) return Promise.resolve(false);
-                
-                try {
-                    return Notification.requestPermission().then(permission => {
-                        return permission === 'granted';
-                    });
-                } catch (e) {
-                    return new Promise((resolve) => {
-                        try {
-                            Notification.requestPermission(permission => {
-                                resolve(permission === 'granted');
-                            });
-                        } catch (err) {
-                            console.error("Lỗi khi cấp quyền thông báo đẩy:", err);
-                            resolve(false);
-                        }
-                    });
-                }
+            'Canh bông cải với cà rốt': {
+                ingredients: ['bông cải', 'cà rốt', 'gà'],
+                instructions: '1. Gà luộc chín, cắt nhỏ\n2. Bông cải, cà rốt thái hạt lựu nhỏ\n3. Nấu nước dùng sôi, thêm rau\n4. Nêm gia vị, nấu 10 phút cho rau chín',
+                priority: 8,
+                nutrition: {
+                    calories: 150,
+                    protein: 18,
+                    carbs: 12,
+                    fat: 3,
+                    fiber: 3,
+                    calcium: 80,
+                    iron: 1.2,
+                    servings: 2
+                },
+                cookTime: 25,
+                difficulty: 'Rất dễ'
             },
-
-            sendPush: (title, body, fallbackCallback) => {
-                if (NotificationEngine.isSupported() && Notification.permission === 'granted') {
-                    try {
-                        new Notification(title, {
-                            body: body,
-                            icon: 'https://cdn-icons-png.flaticon.com/512/1157/1157109.png'
-                        });
-                        return true;
-                    } catch (e) {
-                        console.warn("Gửi thông báo Native thất bại, chuyển sang phương thức nội bộ:", e);
-                    }
-                }
-                if (fallbackCallback) {
-                    fallbackCallback(title, body);
-                }
-                return false;
+            'Tôm xào bông cải': {
+                ingredients: ['tôm', 'bông cải', 'hành tây'],
+                instructions: '1. Tôm rửa sạch, bỏ vỏ\n2. Bông cải tách thành từng nụ\n3. Phi hành tây với tỏi\n4. Xào tôm nhanh, thêm bông cải, nêm gia vị',
+                priority: 9,
+                nutrition: {
+                    calories: 180,
+                    protein: 26,
+                    carbs: 10,
+                    fat: 4,
+                    fiber: 2.5,
+                    calcium: 75,
+                    iron: 1.5,
+                    servings: 2
+                },
+                cookTime: 15,
+                difficulty: 'Dễ'
             },
-
-            triggerPersonaPush: (itemName, daysRemaining, category, fallbackCallback) => {
-                let title = "🚨 FRESHKEEP - CẢNH BÁO HẠN DÙNG";
-                let body = "";
-
-                if (category === "Sữa & Đồ hộp" && itemName.toLowerCase().includes("em bé")) {
-                    title = "⚠️ Cảnh báo nghiêm ngặt";
-                    body = `Đồ ăn dặm của bé Mai chỉ còn ${daysRemaining} ngày hạn dùng. Hãy ưu tiên chế biến cho bé ngay! 👶`;
-                } else if (itemName.toLowerCase().includes("cá hồi") || itemName.toLowerCase().includes("bò")) {
-                    title = "🆘 Nấu ngay kẻo phí!";
-                    body = `Món ngon "${itemName}" trong tủ sẽ hết hạn sau ${daysRemaining} ngày. Đừng để lãng phí nhé Thảo! 💸`;
-                } else {
-                    body = `Thực phẩm "${itemName}" sắp hết hạn sau ${daysRemaining} ngày. Vui lòng kiểm tra và chế biến kịp thời!`;
-                }
-
-                NotificationEngine.sendPush(title, body, fallbackCallback);
+            'Cà rốt sốt bơ': {
+                ingredients: ['cà rốt', 'bơ', 'trứng'],
+                instructions: '1. Cà rốt hấp mềm\n2. Bơ tan chảy, trộn cà rốt\n3. Nêm gia vị\n4. Có thể rắc trứng trần chiên lên trên',
+                priority: 6,
+                nutrition: {
+                    calories: 120,
+                    protein: 2,
+                    carbs: 12,
+                    fat: 7,
+                    fiber: 2.5,
+                    calcium: 50,
+                    iron: 0.4,
+                    servings: 1
+                },
+                cookTime: 15,
+                difficulty: 'Rất dễ'
             }
         };
 
-        // 2.2. Expiry Engine: Thiết lập các mức cảnh báo chi tiết
+        const AIRecipeAnalyzer = {
+            analyzeIngredients: (items) => {
+                const expiringFirst = items.filter(item => ExpiryEngine.calculate(item).daysRemaining <= 3).sort((a, b) => 
+                    ExpiryEngine.calculate(a).daysRemaining - ExpiryEngine.calculate(b).daysRemaining
+                );
+
+                const recommendations = [];
+                const itemNames = items.map(i => i.name.toLowerCase());
+
+                for (const [recipeName, recipeData] of Object.entries(RecipeDatabase)) {
+                    let matchScore = 0;
+                    let criticalMatches = 0;
+
+                    recipeData.ingredients.forEach(ing => {
+                        const isAvailable = itemNames.some(name => name.includes(ing));
+                        if (isAvailable) {
+                            matchScore++;
+                            const isCritical = expiringFirst.some(item => item.name.toLowerCase().includes(ing));
+                            if (isCritical) criticalMatches++;
+                        }
+                    });
+
+                    if (matchScore >= recipeData.ingredients.length * 0.6) {
+                        recommendations.push({
+                            name: recipeName,
+                            matchPercentage: Math.round((matchScore / recipeData.ingredients.length) * 100),
+                            criticalMatches,
+                            data: recipeData,
+                            priority: recipeData.priority + (criticalMatches * 5)
+                        });
+                    }
+                }
+
+                return recommendations.sort((a, b) => b.priority - a.priority);
+            },
+
+            generateDetailedRecipe: (recipeName, availableItems, recipeData) => {
+                const usableIngredients = availableItems.filter(item =>
+                    recipeData.ingredients.some(ing => item.name.toLowerCase().includes(ing))
+                );
+
+                const totalNutrition = {
+                    calories: recipeData.nutrition.calories,
+                    protein: recipeData.nutrition.protein,
+                    carbs: recipeData.nutrition.carbs,
+                    fat: recipeData.nutrition.fat,
+                    fiber: recipeData.nutrition.fiber,
+                    calcium: recipeData.nutrition.calcium,
+                    iron: recipeData.nutrition.iron
+                };
+
+                return {
+                    name: recipeName,
+                    ingredients: usableIngredients,
+                    instructions: recipeData.instructions,
+                    nutrition: totalNutrition,
+                    cookTime: recipeData.cookTime,
+                    difficulty: recipeData.difficulty,
+                    servings: recipeData.nutrition.servings,
+                    tips: AIRecipeAnalyzer.generateCookingTips(recipeName)
+                };
+            },
+
+            generateCookingTips: (recipeName) => {
+                const tips = {
+                    'Gà xào ớt chuông và hành tây': [
+                        '✓ Gà nên thái mỏng để nấu nhanh và mềm hơn',
+                        '✓ Đun lửa to để gà ngoài giòn, trong mềm',
+                        '✓ Thêm ớt chuông vào cuối để giữ độ giòn ngọt'
+                    ],
+                    'Bò lúc lắc': [
+                        '✓ Lửa phải rất nóng để bò ngoài cháy mà trong còn hồng',
+                        '✓ Không nên xào quá lâu, tối đa 3 phút',
+                        '✓ Thêm muối phay ngoài cùng để tăng kích thích vị giác'
+                    ],
+                    'Canh bông cải với cà rốt': [
+                        '✓ Nước dùng càng thơm thì canh càng ngon',
+                        '✓ Đừng nấu quá lâu để rau không bị thối',
+                        '✓ Có thể thêm nấm để tăng độ đậm đà'
+                    ],
+                    'Tôm xào bông cải': [
+                        '✓ Tôm luộc tới có màu hồng, hạn chế xào quá để không bị cứng',
+                        '✓ Bông cải thêm vào cuối để giữ độ giòn',
+                        '✓ Có thể thêm tỏi sau khi xào để tỏi không bị cơm'
+                    ]
+                };
+                return tips[recipeName] || ['✓ Nêm gia vị kỹ', '✓ Nấu lửa vừa để không bị cháy'];
+            }
+        };
+
+        const MealPlanGenerator = {
+            generateWeeklyPlan: (items) => {
+                const recommendations = AIRecipeAnalyzer.analyzeIngredients(items);
+                const weekDays = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+                const weeklyPlan = [];
+
+                weekDays.forEach((day, index) => {
+                    const mealIndex = index % recommendations.length;
+                    if (recommendations[mealIndex]) {
+                        weeklyPlan.push({
+                            day: day,
+                            recipe: recommendations[mealIndex].name,
+                            nutrition: recommendations[mealIndex].data.nutrition,
+                            matchPercentage: recommendations[mealIndex].matchPercentage
+                        });
+                    }
+                });
+
+                return weeklyPlan;
+            },
+
+            calculateWeeklyNutrition: (weeklyPlan) => {
+                const totals = {
+                    calories: 0,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0,
+                    fiber: 0,
+                    calcium: 0,
+                    iron: 0
+                };
+
+                weeklyPlan.forEach(meal => {
+                    totals.calories += meal.nutrition.calories;
+                    totals.protein += meal.nutrition.protein;
+                    totals.carbs += meal.nutrition.carbs;
+                    totals.fat += meal.nutrition.fat;
+                    totals.fiber += meal.nutrition.fiber;
+                    totals.calcium += meal.nutrition.calcium;
+                    totals.iron += meal.nutrition.iron;
+                });
+
+                return {
+                    totals,
+                    averages: {
+                        caloriesPerDay: Math.round(totals.calories / 7),
+                        proteinPerDay: Math.round(totals.protein / 7),
+                        carbsPerDay: Math.round(totals.carbs / 7),
+                        fatPerDay: Math.round(totals.fat / 7)
+                    }
+                };
+            }
+        };
+
         const ExpiryEngine = {
             calculate: (item, warnDaysLimit = 3, pediatricWarnLimit = 2) => {
                 const today = new Date();
@@ -255,1628 +396,256 @@
                     return 10;
                 }
 
-                if (category === 'Đồ khô & Chế biến sẵn' || n.includes('xúc xích') || n.includes('thịt xông khói') || n.includes('mì') || n.includes('bún')) {
-                    if (n.includes('xúc xích')) {
-                        return c.includes('đông') ? 45 : 10; 
-                    }
-                    if (n.includes('xông khói')) {
-                        return c.includes('đông') ? 30 : 7;
-                    }
-                    if (n.includes('mì') || n.includes('bún') || n.includes('phở')) return 365;
-                    return 30;
-                }
-
-                if (category === 'Đồ uống' || n.includes('nước ép') || n.includes('nước ngọt') || n.includes('bia')) {
-                    if (n.includes('nước ép')) return 8;
-                    if (n.includes('nước ngọt')) return 180;
-                    if (n.includes('bia')) return 210;
-                    return 90;
-                }
-
                 return 5;
-            },
-
-            getHealthWarning: (name) => {
-                const n = name.toLowerCase();
-                if (n.includes('khoai tây') || n.includes('hành tây')) {
-                    return '⚠️ Cảnh báo sức khỏe: Khoai tây và Hành tây không nên bảo quan trong tủ lạnh vì dễ bị mọc mầm, ẩm mốc và biến đổi tinh bột thành các chất không có lợi cho sức khỏe.';
-                }
-                if (n.includes('chuối')) {
-                    return '⚠️ Lưu ý bảo quản: Chuối nên được treo bảo quản ở nhiệt độ phòng. Nhiệt độ tủ lạnh sẽ khiến chuối nhanh bị thâm đen và mất vị ngọt tự nhiên.';
-                }
-                return null;
             }
         };
 
-        // 2.3. Recipe Engine: Phân tích & Đề xuất công thức dành riêng cho nguyên liệu lạ
-        const RecipeEngine = {
-            generateForCustomIngredient: (itemName) => {
-                const name = itemName.trim();
-                const lower = name.toLowerCase();
-                
-                if (lower.includes('đông trùng') || lower.includes('linh chi') || lower.includes('sâm') || lower.includes('thảo dược')) {
-                    return [
-                        { name: `Canh gà ta hầm sâm bổ lượng & ${name}`, desc: `Hầm gà cùng ${name}, hạt sen, táo đỏ và kỳ tử trong 1.5 giờ. Thích hợp bồi bổ sức khỏe cho gia đình.` },
-                        { name: `Trà thảo mộc dưỡng nhan từ ${name}`, desc: `Hãm lát ${name} với nước sôi 85°C kèm kỷ tử và một chút đường phèn thanh mát.` }
-                    ];
-                }
-                if (lower.includes('ốc') || lower.includes('nghêu') || lower.includes('hàu') || lower.includes('sò') || lower.includes('bào ngư')) {
-                    return [
-                        { name: `${name} hấp sả ớt cay nồng`, desc: `Hấp cách thủy ${name} cùng sả cây đập dập, gừng thái chỉ và ớt tươi. Chấm kèm nước mắm gừng ấm bụng.` },
-                        { name: `Cháo bổ dưỡng hầm ${name} đậu xanh`, desc: `Nấu cháo nhừ cùng đậu xanh vỏ, sau đó xào chín ${name} với hành tỏi rồi trút vào nồi cháo.` }
-                    ];
-                }
-                if (lower.includes('măng') || lower.includes('nấm') || lower.includes('sen') || lower.includes('mộc nhĩ')) {
-                    return [
-                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn với tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
-                        { name: `Canh sườn heo hầm ${name}`, desc: `Ninh sườn non lấy nước ngọt, cho thêm ${name} hầm chín tới, rắc hành lá và tiêu thơm.` }
-                    ];
-                }
-                if (lower.includes('phô mai') || lower.includes('bơ') || lower.includes('sốt')) {
-                    return [
-                        { name: `Bánh mì nướng sốt ${name}`, desc: `Phết một lớp ${name} mỏng lên bánh mì, thêm một chút trứng hoặc xúc xích rồi nướng giòn.` },
-                        { name: `Mì Ý sốt kem béo ngậy với ${name}`, desc: `Luộc mì Ý dai vừa chín, đảo đều cùng sốt kem, tỏi băm và lớp ${name} tan chảy mịn màng.` }
-                    ];
-                }
-                // Các gợi ý mặc định linh hoạt cho mọi nguyên liệu lạ khác
-                return [
-                    { 
-                        name: `${name} xào tỏi ớt thập cẩm`, 
-                        desc: `Tận dụng các loại rau củ sẵn có trong ngăn mát, xào nhanh tay ${name} trên lửa lớn với tỏi phi thơm để giữ vị giòn dai.` 
-                    },
-                    { 
-                        name: `Canh súp thanh nhiệt cùng ${name}`, 
-                        desc: `Kết hợp ${name} với một ít sườn non hoặc tôm khô để tạo nước dùng ngọt tự nhiên, dùng kèm hành lá thơm nhẹ.` 
-                    }
-                ];
-            }
-        };
+        const initialFoodItems = [
+            { id: '1', name: 'Sữa tươi TH True Milk', quantity: '2 hộp 1L', category: 'Sữa & Đồ hộp', compartment: 'Cánh tủ', expiryDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '2', name: 'Thịt bò Mỹ phi lê', quantity: '500g', category: 'Thịt & Hải sản', compartment: 'Ngăn đông', expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '3', name: 'Ức gà phi lê', quantity: '1kg', category: 'Thịt & Hải sản', compartment: 'Ngăn đông', expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '4', name: 'Ớt chuông đỏ', quantity: '3 quả', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '6', name: 'Hành tây', quantity: '2 củ', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '7', name: 'Bông cải xanh', quantity: '1 cây', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: '8', name: 'Cà rốt', quantity: '500g', category: 'Rau củ & Trái cây', compartment: 'Ngăn mát', expiryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+        ];
 
-        // 2.4. FridgyParser: Bộ phân tách cú pháp NLP thông minh đa lớp câu lệnh
-        const FridgyParser = {
-            categoryKeywords: {
-                'Thịt & Hải sản': ['thịt', 'bò', 'heo', 'gà', 'cá', 'tôm', 'mực', 'sườn', 'ba chỉ', 'bắp bò', 'gân bò', 'cá hồi'],
-                'Rau củ & Trái cây': ['rau', 'cải', 'cà rốt', 'khoai', 'cà chua', 'hành', 'ớt', 'tỏi', 'gừng', 'sả', 'táo', 'chuối', 'cam', 'chanh', 'bông cải', 'súp lơ'],
-                'Sữa & Đồ hộp': ['sữa', 'trứng', 'phô mai', 'bơ', 'mayonnaise', 'tương', 'đồ hộp', 'sữa chua'],
-                'Đồ khô & Chế biến sẵn': ['xúc xích', 'thịt xông khói', 'mì', 'bún', 'phở', 'chà bông', 'ruốc'],
-                'Đồ uống': ['nước ép', 'nước ngọt', 'bia', 'coca', 'pepsi', 'trà']
-            },
-
-            // Hàm kiểm tra nhanh nguyên liệu lạ (nằm ngoài danh mục chuẩn)
-            isCustomIngredient: (name) => {
-                const n = name.toLowerCase();
-                for (const [cat, keywords] of Object.entries(FridgyParser.categoryKeywords)) {
-                    if (keywords.some(keyword => n.includes(keyword))) {
-                        return false; // Trùng từ khóa danh mục chuẩn
-                    }
-                }
-                return true; // Hoàn toàn không khớp từ khóa nào -> Nguyên liệu lạ
-            },
-
-            parseInstruction: (input, itemsList) => {
-                const rawText = input.trim();
-                const normalized = rawText.toLowerCase();
-
-                // TRUY VẤN VÀ CÂU HỎI TRẠNG THÁI (QUERIES)
-                if (normalized.includes('sắp hết hạn') || normalized.includes('sắp hỏng')) {
-                    const expiring = itemsList.filter(item => ExpiryEngine.calculate(item).daysRemaining <= 3);
-                    if (expiring.length === 0) return { success: false, message: 'Fridgy AI: Tuyệt vời! Hiện tại không có thực phẩm nào trong tủ sắp hết hạn.' };
-                    const names = expiring.map(i => `${i.name} (Hạn: ${i.expiryDate})`).join(', ');
-                    return { success: false, message: `Fridgy AI: Phát hiện các thực phẩm sắp hết hạn gấp: [ ${names} ]. Bạn nên ưu tiên nấu sớm.` };
-                }
-
-                if (normalized.includes('trứng gà còn bao nhiêu ngày')) {
-                    const found = itemsList.find(i => i.name.toLowerCase().includes('trứng'));
-                    if (found) {
-                        const days = ExpiryEngine.calculate(found).daysRemaining;
-                        return { success: false, message: `Fridgy AI: Trứng gà tươi hiện còn lại đúng ${days} ngày nữa là đạt giới hạn sử dụng bảo quản.` };
-                    }
-                    return { success: false, message: `Fridgy AI: Không tìm thấy trứng gà trong tủ lạnh của bạn.` };
-                }
-
-                if (normalized.includes('còn') && normalized.includes('không')) {
-                    const searchedWord = normalized.replace('trong tủ', '').replace('còn', '').replace('không', '').replace('fridgy', '').replace('?', '').trim();
-                    const found = itemsList.find(i => i.name.toLowerCase().includes(searchedWord));
-                    if (found) {
-                        return { success: false, message: `Fridgy AI: Có nhé! Món "${found.name}" vẫn còn trong tủ với số lượng: ${found.quantity} (${found.compartment}).` };
-                    }
-                    return { success: false, message: `Fridgy AI: Tiếc quá, hệ thống ghi nhận trong tủ đã hết "${searchedWord}". Bạn có muốn thêm vào danh sách đi chợ không?` };
-                }
-
-                if (normalized.includes('liệt kê') || normalized.includes('có gì')) {
-                    const compMatch = normalized.includes('đông') ? 'Ngăn đông' : normalized.includes('dặm') ? 'Ngăn đồ ăn dặm' : normalized.includes('cánh') ? 'Cánh tủ' : 'Ngăn mát';
-                    const matchedItems = itemsList.filter(i => i.compartment === compMatch);
-                    if (matchedItems.length === 0) return { success: false, message: `Fridgy AI: Vùng lưu trữ ${compMatch} hiện đang trống.` };
-                    return { success: false, message: `Fridgy AI: Các thực phẩm đang ở ${compMatch}: ${matchedItems.map(i => i.name).join(', ')}.` };
-                }
-
-                if (normalized.includes('trạng thái của')) {
-                    const cleaned = normalized.replace('trạng thái của', '').replace('như thế nào', '').replace('?', '').trim();
-                    const found = itemsList.find(i => i.name.toLowerCase().includes(cleaned));
-                    if (found) {
-                        const expiry = ExpiryEngine.calculate(found);
-                        return { success: false, message: `Fridgy AI: Món "${found.name}" đang được lưu trữ ở ${found.compartment} với trạng thái: [${expiry.label}].` };
-                    }
-                    return { success: false, message: `Fridgy AI: Không tìm thấy thực phẩm "${cleaned}" trong hệ thống tủ lạnh của bạn.` };
-                }
-
-                // CÁC CÂU LỆNH GỢI Ý MÓN ĂN & THỰC ĐƠN THÔNG MINH
-                if (normalized.includes('tôi nên nấu gì với') && normalized.includes('sắp hết hạn')) {
-                    return { success: false, message: 'Fridgy AI gợi ý: Với thịt bò (hoặc thịt heo) và bông cải xanh sắp hết hạn, bạn hãy thực hiện món "Bò lúc lắc hành tây" hoặc "Hải sản/Thịt bò xào bông cải xanh thập cẩm" giòn ngọt để giải phóng nguyên liệu nhanh gọn nhé.' };
-                }
-
-                if (normalized.includes('gợi ý cho tôi một món ăn tiết kiệm')) {
-                    return { success: false, message: 'Fridgy AI: Dựa trên nguồn nguyên liệu sẵn có, tôi gợi ý cho tối nay món "Gà xào ớt chuông và hành tây" - Bạn đang có sẵn Ức gà phi lê, Ớt chuông đỏ và Hành tây sắp đến hạn chế biến trong ngăn mát!' };
-                }
-
-                if (normalized.includes('chồng tôi') || normalized.includes('chia sẻ')) {
-                    return { success: false, message: 'Fridgy AI: Tài khoản tủ lạnh đang được chia sẻ đồng bộ trực tiếp với Chồng (Bố trẻ nhỏ) và Trần Thu Thảo. Mọi thay đổi sẽ hiển thị ngay lập tức.' };
-                }
-
-                if (normalized.includes('báo cáo') || normalized.includes('vứt bỏ') || normalized.includes('lãng phí')) {
-                    return { success: false, message: 'Fridgy AI: Tháng này bạn đã sử dụng tốt 92% thực phẩm lưu trữ, chỉ vứt bỏ khoảng 8% (Chủ yếu là rau củ bị quên góc ngăn mát). Hãy tối ưu hóa bằng cách đặt thông báo sớm!' };
-                }
-
-                if (normalized.includes('lời khuyên') || normalized.includes('tiết kiệm')) {
-                    return { success: false, message: 'Fridgy AI mách nhỏ: Chia nhỏ khẩu phần thịt trữ ngăn đông, bọc màng thực phẩm cho rau xanh, và sử dụng tab "Thực đơn" để cứu hộ đồ sắp hết hạn.' };
-                }
-
-                if (normalized.includes('cảnh báo tôi trước 2 ngày')) {
-                    return { success: false, message: 'Fridgy AI: Đã cập nhật chế độ giám sát nhi đồng nghiêm ngặt! Hệ thống sẽ kích hoạt báo động Đỏ nhấp nháy khẩn cấp trước 2 ngày đối với tất cả đồ của bé.' };
-                }
-
-                if (normalized.startsWith('xóa món') || normalized.startsWith('xóa')) {
-                    const targetName = normalized.replace('xóa món', '').replace('xóa', '').replace('khỏi danh sách', '').trim();
-                    const found = itemsList.find(i => i.name.toLowerCase().includes(targetName));
-                    if (found) {
-                        return {
-                            success: true,
-                            action: 'delete',
-                            targetId: found.id,
-                            message: `Fridgy AI: Đã tiến hành xóa thực phẩm "${found.name}" thành công khỏi tủ lạnh.`
-                        };
-                    }
-                    return { success: false, message: `Fridgy AI: Không tìm thấy thực phẩm nào khớp với tên "${targetName}" để xóa.` };
-                }
-
-                if (normalized.startsWith('sửa số lượng') || normalized.startsWith('sửa')) {
-                    const updateRegex = /(?:sửa\s+số\s+lượng\s+|sửa\s+)(.+?)\s+thành\s+(.+)$/i;
-                    const updateMatch = rawText.match(updateRegex);
-                    if (updateMatch) {
-                        const targetName = updateMatch[1].trim().toLowerCase();
-                        const newQty = updateMatch[2].trim();
-                        const found = itemsList.find(i => i.name.toLowerCase().includes(targetName));
-                        if (found) {
-                            return {
-                                success: true,
-                                action: 'update',
-                                targetId: found.id,
-                                newQuantity: newQty,
-                                message: `Fridgy AI: Đã chỉnh sửa thành công số lượng món "${found.name}" thành [${newQty}].`
-                            };
-                        }
-                    }
-                    return { success: false, message: 'Fridgy AI: Sai cú pháp chỉnh sửa. Cú pháp đúng: "Sửa số lượng sữa tươi thành 2 hộp".' };
-                }
-
-                const triggerKeywords = ['thêm', 'bỏ', 'cất', 'mua', 'để'];
-                const hasTrigger = triggerKeywords.some(keyword => normalized.startsWith(keyword));
-
-                if (!hasTrigger) {
-                    return {
-                        success: false,
-                        message: 'Fridgy AI: Vui lòng nhập câu lệnh dạng: "Thêm [số lượng] [tên thực phẩm] vào [ngăn mát/đông/đồ ăn dặm/cánh tủ]"'
-                    };
-                }
-
-                const structureRegex = /(?:thêm|bỏ|cất|mua|để)\s+(.+?)\s+vào\s+(ngăn mát|ngăn đông|cánh tủ|ngăn đồ ăn dặm)/i;
-                const match = rawText.match(structureRegex);
-
-                if (!match) {
-                    return {
-                        success: false,
-                        message: 'Fridgy AI: Tôi chưa khớp được vị trí cất giữ. Hãy ghi rõ: "... vào ngăn mát/ngăn đông/cánh tủ/ngăn đồ ăn dặm".'
-                    };
-                }
-
-                const itemSegment = match[1].trim();
-                const compartmentSegment = match[2].trim().toLowerCase();
-
-                const qtyRegex = /^(\d+\s*[a-zA-Zà-ỹÀ-Ỹ\s]+|\d+)\s+(.+)$/i;
-                const qtyMatch = itemSegment.match(qtyRegex);
-
-                let quantity = '1 phần';
-                let name = itemSegment;
-
-                if (qtyMatch) {
-                    quantity = qtyMatch[1].trim();
-                    name = qtyMatch[2].trim();
-                }
-
-                let compartment = 'Ngăn mát';
-                if (compartmentSegment.includes('đông')) compartment = 'Ngăn đông';
-                if (compartmentSegment.includes('cánh')) compartment = 'Cánh tủ';
-                if (compartmentSegment.includes('dặm')) compartment = 'Ngăn đồ ăn dặm';
-
-                let category = 'Khác';
-                const nameLower = name.toLowerCase();
-
-                for (const [cat, keywords] of Object.entries(FridgyParser.categoryKeywords)) {
-                    if (keywords.some(keyword => nameLower.includes(keyword))) {
-                        category = cat;
-                        break;
-                    }
-                }
-
-                const isStrangeIngredient = category === 'Khác' || FridgyParser.isCustomIngredient(name);
-
-                const fallbackDays = ExpiryEngine.getFallbackDays(name, category, compartment);
-                const targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() + fallbackDays);
-                const expiryDate = targetDate.toISOString().split('T')[0];
-
-                const healthWarn = ExpiryEngine.getHealthWarning(name);
-                const warningSuffix = healthWarn ? `\n\n⚠️ Chú ý: ${healthWarn}` : '';
-
-                const parsedItem = {
-                    name: name.charAt(0).toUpperCase() + name.slice(1),
-                    quantity,
-                    category: isStrangeIngredient ? 'Khác' : category,
-                    compartment,
-                    expiryDate,
-                    isPediatricCritical: compartment === 'Ngăn đồ ăn dặm',
-                    isCustom: isStrangeIngredient
-                };
-
-                if (isStrangeIngredient) {
-                    return {
-                        success: true,
-                        action: 'strange_confirmation',
-                        message: `Fridgy AI phát hiện "${parsedItem.name}" là một Nguyên liệu lạ (không thuộc danh mục chuẩn). Đang kích hoạt Trình cấu hình wizard bảo quản...`,
-                        parsedItem
-                    };
-                }
-
-                return {
-                    success: true,
-                    action: 'add',
-                    message: `Fridgy AI: Đã nhận dạng thành công và tự động phân loại [${category}] -> Lưu trữ tại ${compartment}. Đã kích hoạt thời hạn bảo quản lý tưởng (${fallbackDays} ngày).${warningSuffix}`,
-                    parsedItem
-                };
-            }
-        };
-
-        /* ==========================================================
-           3. PRESENTATION LAYER: REACT DASHBOARD & CONTROLLER
-           ========================================================== */
-        function FreshKeepApp() {
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [authMode, setAuthMode] = useState('login');
-            const [userName, setUserName] = useState('Nguyễn Thị Mai');
-
-            const [items, setItems] = useState(initialFoodItems);
-            const [searchQuery, setSearchQuery] = useState('');
-            const [activeTab, setActiveTab] = useState('storage'); 
-            const [activeCompartment, setActiveCompartment] = useState('Tất cả');
-
-            // Quản lý kết nối mạng thực tế
-            const [isOnline, setIsOnline] = useState(navigator.onLine);
-            const [offlineQueue, setOfflineQueue] = useState([]);
-
-            // Lưu trữ quyền thông báo đẩy hiện tại của trình duyệt
-            const [notificationPermission, setNotificationPermission] = useState(NotificationEngine.getPermissionState());
-            
-            // Hộp đệm lưu danh sách cảnh báo đẩy mô phỏng (In-App Push Fallback Card) khi permission bị Denied - HIỂN THỊ GÓC TRÊN BÊN PHẢI
-            const [inAppNotifications, setInAppNotifications] = useState([]);
-
-            // Lưu trữ trạng thái trung gian xử lý "Nguyên liệu lạ"
-            const [strangeItemToConfirm, setStrangeItemToConfirm] = useState(null);
-
-            const [tempCooler, setTempCooler] = useState(4); 
-            const [tempFreezer, setTempFreezer] = useState(-18); 
-            const [warnDaysLimit, setWarnDaysLimit] = useState(3); 
-            const [pediatricWarnLimit, setPediatricWarnLimit] = useState(2); 
-
-            const [currentTime, setCurrentTime] = useState(new Date());
-            const [coolerSensorTemp, setCoolerSensorTemp] = useState(4.0);
-            const [freezerSensorTemp, setFreezerSensorTemp] = useState(-18.0);
-            
-            // Nhật ký thời gian thực (chỉ cập nhật dựa trên tương tác thật của người dùng)
-            const [liveActivityToast, setLiveActivityToast] = useState(null);
-
-            const [chatInput, setChatInput] = useState('');
-            const [chatHistory, setChatHistory] = useState([
-                { sender: 'fridgy', text: 'Chào bạn! Tôi là trợ lý ảo Fridgy 🤖. Hãy chọn các câu lệnh mẫu nhanh bên phải hoặc gõ tự do vào ô nhập bên dưới để ra lệnh nhé!' }
+        function AIRecipeChatBox({ items }) {
+            const [chatMessages, setChatMessages] = useState([
+                { role: 'ai', text: '🤖 Xin chào! Tôi là AI Chef Assistant. Tôi có thể:\n✓ Phân tích nguyên liệu của bạn\n✓ Gợi ý công thức nấu ăn chi tiết\n✓ Cung cấp thông tin dinh dưỡng đầy đủ\n✓ Lập kế hoạch ăn uống theo tuần\n\nHãy hỏi tôi: "Gợi ý công thức" hoặc "Lập kế hoạch tuần"', timestamp: new Date() }
             ]);
+            const [inputValue, setInputValue] = useState('');
+            const [selectedRecipe, setSelectedRecipe] = useState(null);
+            const [weeklyPlan, setWeeklyPlan] = useState(null);
+            const [showNutrition, setShowNutrition] = useState(false);
 
-            const [showAddModal, setShowAddModal] = useState(false);
-            const [newFood, setNewFood] = useState({ name: '', quantity: '', category: 'Thịt & Hải sản', compartment: 'Ngăn mát', expiryDate: '', isPediatricCritical: false, isCustom: false });
+            const handleSendMessage = () => {
+                if (!inputValue.trim()) return;
 
-            const [healthNotice, setHealthNotice] = useState(null);
-
-            const [roommates, setRoommates] = useState([
-                { name: 'Nguyễn Thị Mai', avatar: '👩‍🍼', role: 'Mẹ bỉm sữa' },
-                { name: 'Trần Thu Thảo', avatar: '👩‍🎓', role: 'Sinh viên' },
-                { name: 'Bố trẻ nhỏ', avatar: '🙋‍♂️', role: 'Chồng' }
-            ]);
-            const [inviteName, setInviteName] = useState('');
-            const [testResults, setTestResults] = useState(null);
-
-            // Cấu trúc Tab điều hướng
-            const tabs = [
-                { id: 'storage', label: '📦 Kho thực phẩm' },
-                { id: 'fridge', label: '🧊 Tủ vật lý', mobileOnly: true },
-                { id: 'ai', label: '🤖 Trợ lý AI' },
-                { id: 'recipes', label: '📊 Phân tích & Thực đơn' },
-                { id: 'settings', label: '⚙️ Cài đặt & Chẩn đoán' }
-            ];
-
-            // ==========================================
-            // BỘ KÍCH HOẠT THÔNG BÁO NỘI BỘ (FALLBACK TOAST SYSTEM - 5 GIÂY)
-            // ==========================================
-            const triggerNotification = (title, body) => {
-                const id = Date.now();
-                setInAppNotifications(prev => [...prev, { id, title, body }]);
-                // Tự động đóng thẻ thông báo sau đúng 5 giây
-                setTimeout(() => {
-                    setInAppNotifications(prev => prev.filter(item => item.id !== id));
-                }, 5000);
-            };
-
-            // ========================================================
-            // HIỆU ỨNG TỰ ĐỘNG ẨN THÔNG BÁO TƯƠNG TÁC THỰC TẾ SAU ĐÚNG 5 GIÂY
-            // ========================================================
-            useEffect(() => {
-                if (liveActivityToast) {
-                    const timer = setTimeout(() => {
-                        setLiveActivityToast(null);
-                    }, 5000); // 5000ms = 5 giây
-                    return () => clearTimeout(timer);
-                }
-            }, [liveActivityToast]);
-
-            // Theo dõi kết nối thực tế
-            useEffect(() => {
-                const handleOnline = () => {
-                    setIsOnline(true);
-                    setLiveActivityToast("Đã khôi phục kết nối Internet thực tế. Đang hoạt động trực tuyến.");
-                };
-                const handleOffline = () => {
-                    setIsOnline(false);
-                    setLiveActivityToast("Đang hoạt động ngoại tuyến. Các thay đổi sẽ được lưu tạm thời.");
-                };
-
-                window.addEventListener('online', handleOnline);
-                window.addEventListener('offline', handleOffline);
-                setIsOnline(navigator.onLine);
-
-                return () => {
-                    window.removeEventListener('online', handleOnline);
-                    window.removeEventListener('offline', handleOffline);
-                };
-            }, []);
-
-            // Đồng bộ hóa ngoại tuyến
-            useEffect(() => {
-                if (isOnline && offlineQueue.length > 0) {
-                    setItems(prev => [...offlineQueue, ...prev]);
-                    NotificationEngine.sendPush(
-                        "Đã phục hồi Internet! 🟢",
-                        `Đồng bộ hóa thành công ${offlineQueue.length} thực phẩm mới từ hàng đợi thiết bị.`,
-                        triggerNotification
-                    );
-                    setOfflineQueue([]);
-                }
-            }, [isOnline, offlineQueue]);
-
-            // Cập nhật thời gian
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    setCurrentTime(new Date());
-                }, 1000);
-                return () => clearInterval(timer);
-            }, []);
-
-            // Mô phỏng biến thiên nhiệt độ cảm biến IoT xung quanh mốc cài đặt
-            useEffect(() => {
-                const sensorTimer = setInterval(() => {
-                    setCoolerSensorTemp((tempCooler + (Math.random() * 0.4 - 0.2)).toFixed(1));
-                    setFreezerSensorTemp((tempFreezer + (Math.random() * 0.6 - 0.3)).toFixed(1));
-                }, 3000);
-                return () => clearInterval(sensorTimer);
-            }, [tempCooler, tempFreezer]);
-
-            // Xử lý gửi lệnh chat của người dùng
-            const handleSendChat = () => {
-                if (!chatInput.trim()) return;
-
-                const userMsg = { sender: 'user', text: chatInput };
-                setChatHistory(prev => [...prev, userMsg]);
-                const parseText = chatInput;
-                setChatInput('');
+                const userMessage = inputValue.toLowerCase().trim();
+                setChatMessages(prev => [...prev, { role: 'user', text: inputValue, timestamp: new Date() }]);
+                setInputValue('');
 
                 setTimeout(() => {
-                    const res = FridgyParser.parseInstruction(parseText, items);
-                    
-                    if (res.success) {
-                        if (res.action === 'strange_confirmation') {
-                            setStrangeItemToConfirm(res.parsedItem);
-                            setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
-                        } else if (res.action === 'add' && res.parsedItem) {
-                            addProcessedFoodItem(res.parsedItem);
-                            setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
-                        } else if (res.action === 'delete' && res.targetId) {
-                            const targetItem = items.find(i => i.id === res.targetId);
-                            setItems(prev => prev.filter(i => i.id !== res.targetId));
-                            setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
-                            if (targetItem) {
-                                setLiveActivityToast(`Đã xóa "${targetItem.name}" thành công qua lệnh trợ lý ảo.`);
-                            }
-                        } else if (res.action === 'update' && res.targetId) {
-                            const targetItem = items.find(i => i.id === res.targetId);
-                            setItems(prev => prev.map(i => i.id === res.targetId ? { ...i, quantity: res.newQuantity } : i));
-                            setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
-                            if (targetItem) {
-                                setLiveActivityToast(`Đã cập nhật số lượng món "${targetItem.name}" thành [${res.newQuantity}].`);
-                            }
+                    if (userMessage.includes('gợi ý công thức')) {
+                        const recommendations = AIRecipeAnalyzer.analyzeIngredients(items);
+                        if (recommendations.length === 0) {
+                            setChatMessages(prev => [...prev, { 
+                                role: 'ai', 
+                                text: '😔 Không có nguyên liệu phù hợp để gợi ý công thức. Vui lòng thêm thêm nguyên liệu!',
+                                timestamp: new Date()
+                            }]);
+                        } else {
+                            const topRecipe = recommendations[0];
+                            setChatMessages(prev => [...prev, { 
+                                role: 'ai', 
+                                text: `🍳 Dựa trên nguyên liệu của bạn, tôi gợi ý món: "${topRecipe.name}" với khả năng sử dụng ${topRecipe.matchPercentage}%\n\nBạn muốn xem chi tiết công thức này không?`,
+                                timestamp: new Date(),
+                                action: 'showRecipe',
+                                recipe: topRecipe
+                            }]);
+                            setSelectedRecipe(topRecipe);
                         }
+                    } else if (userMessage.includes('lập kế hoạch') || userMessage.includes('tuần')) {
+                        const plan = MealPlanGenerator.generateWeeklyPlan(items);
+                        const nutrition = MealPlanGenerator.calculateWeeklyNutrition(plan);
+                        setWeeklyPlan({ plan, nutrition });
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: `📋 Đã tạo kế hoạch ăn uống cho tuần này!\n\n📊 Thống kê tuần:\n• Tổng calo: ${nutrition.totals.calories} kcal\n• Bình quân/ngày: ${nutrition.averages.caloriesPerDay} kcal\n• Protein: ${nutrition.totals.protein}g (${nutrition.averages.proteinPerDay}g/ngày)`,
+                            timestamp: new Date(),
+                            action: 'showPlan'
+                        }]);
+                    } else if (userMessage.includes('dinh dưỡng') || userMessage.includes('nutrition')) {
+                        setShowNutrition(true);
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: `📊 Đã mở chi tiết dinh dưỡng của công thức!`,
+                            timestamp: new Date()
+                        }]);
+                    } else if (userMessage.includes('tôi còn gì') || userMessage.includes('còn gì')) {
+                        const expiringItems = items.filter(item => ExpiryEngine.calculate(item).daysRemaining <= 3);
+                        const freshItems = items.filter(item => ExpiryEngine.calculate(item).daysRemaining > 3);
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: `📦 Tổng: ${items.length} nguyên liệu\n\n🟡 Sắp hết hạn (${expiringItems.length}):\n${expiringItems.map(i => `• ${i.name} (${ExpiryEngine.calculate(i).daysRemaining} ngày)`).join('\n')}\n\n🟢 Còn tươi (${freshItems.length}):\n${freshItems.slice(0, 3).map(i => `• ${i.name}`).join('\n')}${freshItems.length > 3 ? `\n... và ${freshItems.length - 3} nguyên liệu khác` : ''}`,
+                            timestamp: new Date()
+                        }]);
                     } else {
-                        setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
+                        setChatMessages(prev => [...prev, { 
+                            role: 'ai', 
+                            text: `💡 Tôi có thể giúp bạn:\n• "Gợi ý công thức" - dựa trên nguyên liệu hiện có\n• "Lập kế hoạch tuần" - lên menu cho cả tuần\n• "Dinh dưỡng" - xem chi tiết giá trị dinh dưỡng\n• "Tôi còn gì" - kiểm tra nguyên liệu\n\nHãy thử một trong những lệnh này!`,
+                            timestamp: new Date()
+                        }]);
                     }
-                }, 400);
+                }, 500);
             };
-
-            const handleQuickCommand = (commandText) => {
-                setChatInput(commandText);
-            };
-
-            // Hàm lưu trữ thực phẩm và kiểm soát nhật ký thực
-            const addProcessedFoodItem = (foodItem) => {
-                const finalItem = {
-                    id: Date.now().toString(),
-                    ...foodItem
-                };
-
-                const healthWarn = ExpiryEngine.getHealthWarning(foodItem.name);
-                if (healthWarn) {
-                    setHealthNotice(healthWarn);
-                    setTimeout(() => setHealthNotice(null), 8000);
-                }
-
-                if (!isOnline) {
-                    setOfflineQueue(prev => [finalItem, ...prev]);
-                    NotificationEngine.sendPush(
-                        "FreshKeep Ngoại tuyến 🔴",
-                        `Đã lưu tạm thời "${finalItem.name}" vào bộ nhớ đệm thiết bị cá nhân.`,
-                        triggerNotification
-                    );
-                    setLiveActivityToast(`Đã xếp hàng đợi ngoại tuyến: Thêm món "${finalItem.name}"`);
-                } else {
-                    setItems(prev => [finalItem, ...prev]);
-
-                    NotificationEngine.sendPush(
-                        "Món mới phát hiện! 🎉",
-                        `${userName} vừa thêm "${finalItem.name}" (${finalItem.quantity}) vào tủ lạnh gia đình.`,
-                        triggerNotification
-                    );
-
-                    setLiveActivityToast(`${userName} vừa cất thành công "${finalItem.name}" (${finalItem.quantity}) vào tủ.`);
-
-                    const info = ExpiryEngine.calculate(finalItem, warnDaysLimit, pediatricWarnLimit);
-                    if (info.daysRemaining <= warnDaysLimit) {
-                        NotificationEngine.triggerPersonaPush(finalItem.name, info.daysRemaining, finalItem.category, triggerNotification);
-                    }
-                }
-            };
-
-            const handleConfirmStrangeIngredient = (confirmedCompartment, expiryDays, isPediatric) => {
-                if (!strangeItemToConfirm) return;
-
-                const targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() + Number(expiryDays));
-
-                const updatedStrangeItem = {
-                    ...strangeItemToConfirm,
-                    compartment: confirmedCompartment,
-                    expiryDate: targetDate.toISOString().split('T')[0],
-                    isPediatricCritical: isPediatric,
-                    isCustom: true
-                };
-
-                addProcessedFoodItem(updatedStrangeItem);
-                
-                setChatHistory(prev => [...prev, { 
-                    sender: 'fridgy', 
-                    text: `Đã xác nhận nguyên liệu lạ "${updatedStrangeItem.name}" vào ${confirmedCompartment} với thời hạn bảo quản ${expiryDays} ngày.` 
-                }]);
-
-                setLiveActivityToast(`Đã cấu hình nguyên liệu đặc biệt: "${updatedStrangeItem.name}"`);
-                setStrangeItemToConfirm(null);
-            };
-
-            const handleAddManualItem = (e) => {
-                e.preventDefault();
-                if (!newFood.name || !newFood.quantity) return;
-
-                let targetCategory = newFood.category;
-                let isStrange = FridgyParser.isCustomIngredient(newFood.name);
-
-                if (isStrange) {
-                    targetCategory = 'Khác';
-                } else {
-                    const nameLower = newFood.name.toLowerCase();
-                    for (const [cat, keywords] of Object.entries(FridgyParser.categoryKeywords)) {
-                        if (keywords.some(keyword => nameLower.includes(keyword))) {
-                            targetCategory = cat;
-                            break;
-                        }
-                    }
-                }
-
-                let finalExpiryDate = newFood.expiryDate;
-                if (!finalExpiryDate) {
-                    const fallbackDays = ExpiryEngine.getFallbackDays(newFood.name, targetCategory, newFood.compartment);
-                    const targetDate = new Date();
-                    targetDate.setDate(targetDate.getDate() + fallbackDays);
-                    finalExpiryDate = targetDate.toISOString().split('T')[0];
-                }
-
-                const manualFoodItem = {
-                    name: newFood.name,
-                    quantity: newFood.quantity,
-                    category: targetCategory,
-                    compartment: newFood.compartment,
-                    expiryDate: finalExpiryDate,
-                    isPediatricCritical: newFood.compartment === 'Ngăn đồ ăn dặm' || newFood.isPediatricCritical,
-                    isCustom: isStrange
-                };
-
-                if (isStrange) {
-                    setStrangeItemToConfirm(manualFoodItem);
-                } else {
-                    addProcessedFoodItem(manualFoodItem);
-                }
-
-                setShowAddModal(false);
-                setNewFood({ name: '', quantity: '', category: 'Thịt & Hải sản', compartment: 'Ngăn mát', expiryDate: '', isPediatricCritical: false, isCustom: false });
-            };
-
-            const handleDeleteFood = (id) => {
-                const target = items.find(item => item.id === id);
-                setItems(prev => prev.filter(item => item.id !== id));
-                if (target) {
-                    setLiveActivityToast(`Đã lấy "${target.name}" ra khỏi ${target.compartment}.`);
-                }
-            };
-
-            // Giao thức xử lý bấm nút Yêu cầu cấp quyền không dùng async/await để tránh lỗi biên dịch Babel
-            const handleRequestPermissionClick = () => {
-                NotificationEngine.requestPermission().then(isGranted => {
-                    setNotificationPermission(NotificationEngine.getPermissionState());
-                    if (isGranted) {
-                        NotificationEngine.sendPush(
-                            "Kết nối FreshKeep 🟢", 
-                            "Đã kết nối nhận tin nhắn cảnh báo thành công!", 
-                            triggerNotification
-                        );
-                    } else {
-                        triggerNotification(
-                            "Thông báo nội bộ 🔔", 
-                            "Hệ thống thông báo nội bộ (In-App Fallback) đã được kích hoạt thành công."
-                        );
-                    }
-                }).catch(err => {
-                    console.error("Lỗi yêu cầu quyền thông báo đẩy:", err);
-                    triggerNotification(
-                        "Thông báo nội bộ 🔔", 
-                        "Hệ thống thông báo nội bộ (In-App Fallback) đã sẵn sàng hoạt động."
-                    );
-                });
-            };
-
-            const filteredItems = useMemo(() => {
-                return items.filter(item => {
-                    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchesComp = activeCompartment === 'Tất cả' || item.compartment === activeCompartment;
-                    return matchesSearch && matchesComp;
-                });
-            }, [items, searchQuery, activeCompartment]);
-
-            const stats = useMemo(() => {
-                const total = items.length;
-                const counts = { 'Thịt & Hải sản': 0, 'Rau củ & Trái cây': 0, 'Sữa & Đồ hộp': 0, 'Đồ khô & Chế biến sẵn': 0, 'Đồ uống': 0, 'Khác': 0 };
-                items.forEach(i => { if (counts[i.category] !== undefined) counts[i.category]++; else counts['Khác']++; });
-                
-                const distribution = Object.keys(counts).map(key => ({
-                    category: key,
-                    percentage: total > 0 ? Math.round((counts[key] / total) * 100) : 0,
-                    count: counts[key]
-                })).filter(d => d.count > 0);
-
-                return { total, distribution };
-            }, [items]);
-
-            const matchedRecipes = useMemo(() => {
-                const availableNames = items.map(item => item.name.toLowerCase());
-                const criticalIngredients = items
-                    .filter(item => ExpiryEngine.calculate(item, warnDaysLimit, pediatricWarnLimit).daysRemaining <= warnDaysLimit)
-                    .map(item => item.name.toLowerCase());
-
-                const matched = RecipeCatalog.map(recipe => {
-                    let matchCount = 0;
-                    let criticalMatchCount = 0;
-
-                    recipe.requiredIngredients.forEach(reqIng => {
-                        const isAvailable = availableNames.some(name => name.includes(reqIng));
-                        if (isAvailable) {
-                            matchCount++;
-                            const isCritical = criticalIngredients.some(name => name.includes(reqIng));
-                            if (isCritical) criticalMatchCount++;
-                        }
-                    });
-
-                    const matchScore = matchCount / recipe.requiredIngredients.length;
-                    return { recipe, matchScore, criticalMatchCount };
-                });
-
-                return matched
-                    .filter(m => m.matchScore >= 0.4) 
-                    .sort((a, b) => {
-                        if (b.criticalMatchCount !== a.criticalMatchCount) {
-                            return b.criticalMatchCount - a.criticalMatchCount;
-                        }
-                        return b.matchScore - a.matchScore;
-                    });
-            }, [items, warnDaysLimit, pediatricWarnLimit]);
-
-            const handlePersonaNotificationTest = (type) => {
-                if (type === 'baby') {
-                    NotificationEngine.triggerPersonaPush("Sữa non ăn dặm em bé", 1, "Sữa & Đồ hộp", triggerNotification);
-                } else {
-                    NotificationEngine.triggerPersonaPush("Thịt ba chỉ cá hồi Nauy", 2, "Thịt & Hải sản", triggerNotification);
-                }
-            };
-
-            const runUnitTests = () => {
-                const results = [];
-
-                // TC1: Cảnh báo an toàn nhi đồng
-                const mockBabyMilk = {
-                    id: 't1', name: 'Sữa non pha sẵn cho bé', quantity: '1 bình',
-                    category: 'Sữa & Đồ hộp', compartment: 'Ngăn đồ ăn dặm',
-                    expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    isPediatricCritical: true
-                };
-                const r1 = ExpiryEngine.calculate(mockBabyMilk, 3, 2);
-                results.push({ name: 'An toàn nhi đồng: Kích hoạt báo động Đỏ khẩn cấp trước 2 ngày', status: r1.label.includes('NGUY HIỂM') ? 'PASS' : 'FAIL' });
-
-                // TC2: Nhận diện thực phẩm tươi mới
-                const mockFresh = {
-                    id: 't2', name: 'Táo tươi', quantity: '1 đĩa',
-                    category: 'Rau củ & Trái cây', compartment: 'Ngăn mát',
-                    expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                };
-                const r2 = ExpiryEngine.calculate(mockFresh, 3, 2);
-                results.push({ name: 'ExpiryEngine: Nhận diện thực phẩm tươi xanh lành mạnh', status: r2.label.includes('TƯƠI MỚI') ? 'PASS' : 'FAIL' });
-
-                // TC3: Parser tự động phân tách
-                const parseTest = FridgyParser.parseInstruction('Thêm 3 vỉ trứng gà vào ngăn đồ ăn dặm', items);
-                results.push({ 
-                    name: 'FridgyParser: Trích xuất chính xác Ngăn đồ ăn dặm & Sữa & Đồ hộp', 
-                    status: (parseTest.success && parseTest.parsedItem.category === 'Sữa & Đồ hộp' && parseTest.parsedItem.compartment === 'Ngăn đồ ăn dặm') ? 'PASS' : 'FAIL' 
-                });
-
-                // TC4: Tự động tính hạn sử dụng khi bỏ trống (Fallback Expiry)
-                const fallbackTest = ExpiryEngine.getFallbackDays('Thịt heo ba chỉ', 'Thịt & Hải sản', 'Ngăn đông');
-                results.push({
-                    name: 'Fallback Expiry: Tự động đề xuất thời hạn 150 ngày bảo quản thịt heo đông lạnh',
-                    status: fallbackTest === 150 ? 'PASS' : 'FAIL'
-                });
-
-                setTestResults(results);
-            };
-
-            const renderFridgeVisual = () => (
-                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-6 border-2 border-amber-200/40 shadow-xl flex flex-col gap-5 w-full">
-                    <h3 className="text-center font-extrabold text-amber-950 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
-                        <span>🧊</span> Trạng thái vật lý thực tế
-                    </h3>
-
-                    {/* Ngăn đông */}
-                    <div className="bg-gradient-to-br from-blue-500/10 to-cyan-400/5 border border-blue-200/50 rounded-2xl p-4 min-h-[130px] hover:shadow-md transition-all">
-                        <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
-                            ❄️ Ngăn đông • <strong className="text-blue-800 animate-pulse">{freezerSensorTemp}°C</strong>
-                        </span>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {items.filter(i => i.compartment === 'Ngăn đông').map(i => (
-                                <span key={i.id} className="bg-white/95 px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-700 shadow-sm border border-blue-100 flex items-center hover:scale-105 transition-all">
-                                    📦 {i.name} {i.isCustom && <span className="bg-amber-100 text-amber-800 text-[8px] px-1 rounded ml-1 font-sans font-black">Lạ</span>}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Ngăn đồ ăn dặm */}
-                    <div className="bg-gradient-to-br from-rose-500/10 to-pink-400/5 border border-rose-200/50 rounded-2xl p-4 min-h-[110px] hover:shadow-md transition-all">
-                        <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-widest flex items-center gap-1.5">
-                            🍼 Ngăn đồ ăn dặm cho bé 🚨
-                        </span>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {items.filter(i => i.compartment === 'Ngăn đồ ăn dặm').map(i => {
-                                const expiry = ExpiryEngine.calculate(i, warnDaysLimit, pediatricWarnLimit);
-                                return (
-                                    <span key={i.id} className={`px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center hover:scale-105 transition-all ${expiry.daysRemaining <= pediatricWarnLimit ? 'bg-red-500 text-white alert-pulse' : 'bg-white text-stone-700'}`}>
-                                        👶 {i.name} {i.isCustom && <span className="bg-amber-100 text-amber-800 text-[8px] px-1 rounded ml-1 font-sans font-black">Lạ</span>}
-                                    </span>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Ngăn mát */}
-                    <div className="bg-gradient-to-br from-emerald-500/10 to-teal-400/5 border border-emerald-200/50 rounded-2xl p-4 min-h-[240px] flex-1 flex flex-col hover:shadow-md transition-all">
-                        <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
-                            🥗 Ngăn mát • <strong className="text-emerald-800 animate-pulse">{coolerSensorTemp}°C</strong>
-                        </span>
-                        <div className="flex flex-wrap gap-2 mt-3 flex-1 align-content-start">
-                            {items.filter(i => i.compartment === 'Ngăn mát').map(i => (
-                                <span key={i.id} className="bg-white/95 px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-700 shadow-sm border border-emerald-100 flex items-center hover:scale-105 transition-all">
-                                    🥦 {i.name} {i.isCustom && <span className="bg-amber-100 text-amber-800 text-[8px] px-1 rounded ml-1 font-sans font-black">Lạ</span>}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Cánh tủ */}
-                    <div className="bg-gradient-to-br from-amber-500/10 to-orange-400/5 border border-orange-200/50 rounded-2xl p-4 min-h-[130px] hover:shadow-md transition-all">
-                        <span className="text-[10px] font-extrabold text-orange-600 uppercase tracking-widest flex items-center gap-1.5">
-                            🥛 Cánh tủ
-                        </span>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {items.filter(i => i.compartment === 'Cánh tủ').map(i => (
-                                <span key={i.id} className="bg-white/95 px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-700 shadow-sm border border-orange-100 flex items-center hover:scale-105 transition-all">
-                                    🧴 {i.name} {i.isCustom && <span className="bg-amber-100 text-amber-800 text-[8px] px-1.5 rounded ml-1 font-sans font-black">Lạ</span>}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-
-            if (!isLoggedIn) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-                        <span className="absolute top-10 left-10 text-7xl floating-food opacity-30">🥩</span>
-                        <span className="absolute bottom-12 left-20 text-7xl floating-food opacity-30" style={{animationDelay: '1.2s'}}>🥛</span>
-                        <span className="absolute top-20 right-20 text-7xl floating-food opacity-30" style={{animationDelay: '2.5s'}}>👶</span>
-
-                        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-10 max-w-md w-full border border-white/50 shadow-[0_24px_64px_rgba(253,186,116,0.35)] z-10">
-                            <div className="text-center mb-8">
-                                <div className="inline-block p-4 bg-amber-100 rounded-full shadow-inner mb-3">
-                                    <span className="text-5xl block floating-food">🥑</span>
-                                </div>
-                                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 tracking-tight">FRESHKEEP</h1>
-                                <p className="text-xs font-semibold text-amber-700/80 mt-2 uppercase tracking-widest">Hệ thống Giám sát & Quản lý Tủ lạnh</p>
-                            </div>
-
-                            <form onSubmit={(e) => { e.preventDefault(); setIsLoggedIn(true); }} className="space-y-5">
-                                {authMode === 'register' && (
-                                    <div>
-                                        <label className="block text-[11px] font-extrabold text-stone-500 mb-1 tracking-wider">HỌ VÀ TÊN</label>
-                                        <input 
-                                            type="text" required
-                                            className="w-full border-2 border-stone-100 bg-white/60 focus:bg-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-300 focus:outline-none transition-all font-sans"
-                                            placeholder="Nguyễn Thị Mai"
-                                            value={userName}
-                                            onChange={(e) => setUserName(e.target.value)}
-                                        />
-                                    </div>
-                                )}
-                                <div>
-                                    <label className="block text-[11px] font-extrabold text-stone-500 mb-1 tracking-wider">EMAIL ĐĂNG NHẬP</label>
-                                    <input 
-                                        type="email" required
-                                        className="w-full border-2 border-stone-100 bg-white/60 focus:bg-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-300 focus:outline-none transition-all font-sans"
-                                        placeholder="mai.nguyen@gmail.com"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-extrabold text-stone-500 mb-1 tracking-wider">MẬT KHẨU</label>
-                                    <input 
-                                        type="password" required
-                                        className="w-full border-2 border-stone-100 bg-white/60 focus:bg-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-300 focus:outline-none transition-all font-sans"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-                                <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black py-3 rounded-2xl transition-all shadow-lg text-sm">
-                                    Vào quản lý tủ lạnh của bạn
-                                </button>
-                                <p className="text-xs text-center text-stone-500 mt-4">
-                                    {authMode === 'login' ? (
-                                        <span>Chưa có tài khoản chung? <button type="button" onClick={() => setAuthMode('register')} className="text-amber-700 font-extrabold underline hover:text-orange-600 transition font-sans">Đăng ký ngay</button></span>
-                                    ) : (
-                                        <span>Đã có tài khoản chung? <button type="button" onClick={() => setAuthMode('login')} className="text-amber-700 font-extrabold underline hover:text-orange-600 transition font-sans">Đăng nhập</button></span>
-                                    )}
-                                </p>
-                            </form>
-                        </div>
-                    </div>
-                );
-            }
 
             return (
-                <div className="min-h-screen p-3 sm:p-4 md:p-8 flex flex-col items-center relative">
-                    
-                    {/* BỘ PHÁT CẢNH BÁO MÔ PHỎNG NỘI BỘ (IN-APP NOTIFICATIONS OVERLAY STACK - GÓC TRÊN BÊN PHẢI) */}
-                    <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full">
-                        {inAppNotifications.map(n => (
-                            <div key={n.id} className="bg-stone-900/95 text-white p-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] border border-stone-800 animate-slide-in relative flex gap-3 items-start">
-                                <span className="text-2xl mt-0.5">🔔</span>
-                                <div className="flex-1 font-sans">
-                                    <h4 className="font-extrabold text-xs text-amber-400 uppercase tracking-wider">{n.title}</h4>
-                                    <p className="text-[11px] text-stone-200 mt-1 font-semibold leading-relaxed">{n.body}</p>
+                <div className="flex flex-col h-full bg-gradient-to-br from-purple-50/80 to-blue-50/80 rounded-3xl border-2 border-purple-200/50 overflow-hidden shadow-2xl">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-4 shadow-lg">
+                        <h2 className="text-2xl font-black">🤖 AI Chef Assistant</h2>
+                        <p className="text-sm opacity-90">Phân tích nguyên liệu & gợi ý công thức thông minh</p>
+                    </div>
+
+                    {/* Chat Area */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-gradient-to-b from-transparent to-purple-50/30">
+                        {chatMessages.map((msg, idx) => (
+                            <div key={idx} className={`chat-fade-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-xs px-4 py-3 rounded-2xl shadow-md ${
+                                    msg.role === 'user' 
+                                        ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-br-none' 
+                                        : 'bg-white text-gray-800 border-2 border-purple-200 rounded-bl-none'
+                                }`}>
+                                    <p className="text-sm whitespace-pre-wrap font-medium">{msg.text}</p>
                                 </div>
-                                <button 
-                                    onClick={() => setInAppNotifications(prev => prev.filter(item => item.id !== n.id))}
-                                    className="text-stone-400 hover:text-white text-xs font-bold font-sans self-start ml-2"
-                                >
-                                    ✕
-                                </button>
                             </div>
                         ))}
                     </div>
 
-                    {healthNotice && (
-                        <div className="fixed top-6 left-6 right-6 md:left-auto md:right-6 md:max-w-md bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl shadow-xl z-50 animate-bounce">
-                            <p className="text-xs font-bold text-amber-900 leading-relaxed">{healthNotice}</p>
-                            <button onClick={() => setHealthNotice(null)} className="absolute top-2 right-2 text-amber-500 hover:text-amber-700 text-xs">✕</button>
+                    {/* Recipe Details */}
+                    {selectedRecipe && (
+                        <div className="border-t-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4 max-h-72 overflow-y-auto shadow-inner">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-lg text-purple-800">🍳 {selectedRecipe.name}</h3>
+                                <button onClick={() => setSelectedRecipe(null)} className="text-2xl">✕</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs mb-3 bg-white p-2 rounded-lg border-l-4 border-purple-400">
+                                <div>⏱️ {selectedRecipe.data.cookTime} phút</div>
+                                <div>📊 Độ khó: {selectedRecipe.data.difficulty}</div>
+                                <div>👥 {selectedRecipe.data.nutrition.servings} phần</div>
+                                <div>✅ {selectedRecipe.matchPercentage}% nguyên liệu</div>
+                            </div>
+                            <p className="text-xs text-gray-700 whitespace-pre-wrap mb-3 bg-white p-2 rounded-lg">{selectedRecipe.data.instructions}</p>
+                            
+                            {showNutrition && (
+                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-3 text-xs space-y-2 border-l-4 border-purple-400 mb-3">
+                                    <p className="font-bold text-purple-800">🥗 Dinh dưỡng (1 phần):</p>
+                                    <div className="grid grid-cols-2 gap-2 text-gray-700">
+                                        <p>🔥 Calo: {selectedRecipe.data.nutrition.calories} kcal</p>
+                                        <p>💪 Protein: {selectedRecipe.data.nutrition.protein}g</p>
+                                        <p>🌾 Carbs: {selectedRecipe.data.nutrition.carbs}g</p>
+                                        <p>🧈 Fat: {selectedRecipe.data.nutrition.fat}g</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <button 
+                                onClick={() => setShowNutrition(!showNutrition)}
+                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white text-xs py-2 rounded-lg font-bold transition-all transform hover:scale-105 shadow-md"
+                            >
+                                {showNutrition ? '📊 Ẩn' : '📊 Xem'} Dinh dưỡng chi tiết
+                            </button>
                         </div>
                     )}
 
-                    {/* THÔNG BÁO HOẠT ĐỘNG THỜI GIAN THỰC TƯƠNG TÁC THẬT - GÓC DƯỚI BÊN PHẢI (TỰ ẨN SAU 5 GIÂY) */}
-                    {liveActivityToast && (
-                        <div className="fixed bottom-6 right-6 bg-stone-900/90 text-white text-xs px-5 py-3 rounded-2xl shadow-2xl border border-stone-800 z-50 animate-slide-in flex items-center gap-2">
-                            <span className="animate-ping w-2 h-2 rounded-full bg-emerald-400 inline-block mr-1"></span>
-                            <span className="font-bold">{liveActivityToast}</span>
+                    {/* Weekly Plan Display */}
+                    {weeklyPlan && (
+                        <div className="border-t-2 border-purple-200 bg-gradient-to-br from-blue-50 to-purple-50 p-4 max-h-72 overflow-y-auto shadow-inner">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-lg text-blue-800">📋 Kế hoạch tuần</h3>
+                                <button onClick={() => setWeeklyPlan(null)} className="text-2xl">✕</button>
+                            </div>
+                            <div className="space-y-1">
+                                {weeklyPlan.plan.map((meal, idx) => (
+                                    <div key={idx} className="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 text-xs shadow-sm hover:shadow-md transition-all">
+                                        <span className="font-semibold text-blue-600">{meal.day}</span>
+                                        <span className="text-gray-700 text-center flex-1">{meal.recipe}</span>
+                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold">{meal.matchPercentage}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 bg-white p-3 rounded-lg border-l-4 border-blue-400 text-xs text-gray-700 space-y-1">
+                                <p className="font-bold text-blue-800">📊 Tổng hợp tuần:</p>
+                                <p>🔥 Tổng calo: {weeklyPlan.nutrition.totals.calories} kcal ({weeklyPlan.nutrition.averages.caloriesPerDay}/ngày)</p>
+                                <p>💪 Protein: {weeklyPlan.nutrition.totals.protein}g ({weeklyPlan.nutrition.averages.proteinPerDay}g/ngày)</p>
+                            </div>
                         </div>
                     )}
 
-                    {/* TOP HEADER */}
-                    <header className="w-full max-w-7xl flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-orange-100 z-10 gap-3 sm:gap-0">
-                        <div className="flex items-center gap-3 self-start sm:self-center">
-                            <span className="text-4xl sm:text-5xl floating-food">🍊</span>
-                            <div>
-                                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-800 to-orange-600 font-sans">FRESHKEEP</h1>
-                                <p className="text-[10px] sm:text-xs text-stone-500 font-bold uppercase tracking-wider">
-                                    📅 {currentTime.toLocaleDateString('vi-VN')} | ⏰ {currentTime.toLocaleTimeString()}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Smart Status Bar: Socket WiFi & Push Notification Status */}
-                        <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-3 bg-white/70 backdrop-blur-md border border-amber-200/60 px-4 py-2 rounded-2xl shadow-sm z-10 font-sans">
-                            <div className="flex items-center gap-2 mr-2">
-                                <span className="text-xs font-bold text-stone-500">WiFi:</span>
-                                <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800 animate-pulse'}`}>
-                                    {isOnline ? '🟢 ĐÃ KẾT NỐI' : '🔴 MẤT KẾT NỐI'}
-                                </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
-                                <span className="text-xl animate-bounce">👩‍🍼</span>
-                                <div className="text-left font-sans">
-                                    <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider">Chào mừng</p>
-                                    <p className="text-xs font-black text-stone-800">{userName}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setIsLoggedIn(false)} className="text-xs text-red-500 hover:text-red-700 font-bold ml-4 border-l border-stone-200 pl-4 py-1">Đóng tủ</button>
-                        </div>
-                    </header>
-
-                    {/* MAIN SPLIT-VIEW */}
-                    <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 z-10 font-sans">
-                        
-                        {/* COLUMN 1: TỦ LẠNH VẬT LÝ */}
-                        <div className="hidden lg:block lg:col-span-4">
-                            {renderFridgeVisual()}
-                        </div>
-
-                        {/* COLUMN 2: TOÀN BỘ PHẦN BẢNG ĐIỀU KHIỂN & TABS CHỨC NĂNG */}
-                        <div className="col-span-1 lg:col-span-8 flex flex-col gap-4 sm:gap-6 w-full">
-                            
-                            {/* MENU TABS ĐIỀU HƯỚNG */}
-                            <div className="flex gap-1.5 border-b border-amber-200/30 pb-3 overflow-x-auto w-full no-scrollbar">
-                                {tabs.map(tab => {
-                                    const isFridgeTab = tab.id === 'fridge';
-                                    const tabClass = `px-4 py-2.5 rounded-xl text-[11px] font-extrabold transition-all whitespace-nowrap flex items-center min-h-[40px] ${
-                                        activeTab === tab.id ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-stone-950 shadow-md scale-105' : 'hover:bg-amber-100/50 text-stone-500 bg-white/40'
-                                    } ${isFridgeTab ? 'lg:hidden' : ''}`;
-
-                                    return (
-                                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={tabClass}>
-                                            {tab.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* TAB CONTAINER CONTENT */}
-                            <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-6 rounded-[2rem] border border-amber-200/30 shadow-2xl min-h-[460px] flex flex-col justify-between">
-                                
-                                {activeTab === 'fridge' && (
-                                    <div className="lg:hidden flex-1">
-                                        {renderFridgeVisual()}
-                                    </div>
-                                )}
-
-                                {/* TAB 1: KHO THỰC PHẨM */}
-                                {activeTab === 'storage' && (
-                                    <div className="flex-1 flex flex-col">
-                                        <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center mb-6">
-                                            <input 
-                                                type="text"
-                                                className="w-full md:w-64 border-2 border-stone-100 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-300 focus:outline-none transition-all font-sans min-h-[42px]"
-                                                placeholder="Tìm nhanh thực phẩm..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                            <div className="flex gap-1 overflow-x-auto w-full md:w-auto no-scrollbar py-1">
-                                                {['Tất cả', 'Ngăn mát', 'Ngăn đông', 'Cánh tủ', 'Ngăn đồ ăn dặm'].map((comp) => (
-                                                    <button
-                                                        key={comp}
-                                                        onClick={() => setActiveCompartment(comp)}
-                                                        className={`text-[10px] sm:text-xs px-3 py-2 rounded-lg font-bold transition-all whitespace-nowrap ${
-                                                            activeCompartment === comp ? 'bg-amber-200 text-amber-950 shadow-sm' : 'bg-stone-50 text-stone-400 hover:bg-stone-100'
-                                                        }`}
-                                                    >
-                                                        {comp}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <button 
-                                                onClick={() => setShowAddModal(true)}
-                                                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-lg transition transform active:scale-95 whitespace-nowrap min-h-[42px] flex items-center justify-center"
-                                            >
-                                                ➕ Thêm món mới
-                                            </button>
-                                        </div>
-
-                                        {offlineQueue.length > 0 && (
-                                            <div className="mb-4 bg-orange-100 text-orange-950 border border-orange-200 text-[10px] font-bold p-2.5 rounded-xl animate-pulse">
-                                                ⚠️ Bạn đang ngoại tuyến. Có {offlineQueue.length} thực phẩm đang lưu cục bộ, hệ thống sẽ tự động đồng bộ khi có kết nối WiFi trở lại.
-                                            </div>
-                                        )}
-
-                                        <div className="space-y-3 overflow-y-auto max-h-[340px] flex-1 pr-1">
-                                            {filteredItems.map(item => {
-                                                const expiry = ExpiryEngine.calculate(item, warnDaysLimit, pediatricWarnLimit);
-                                                return (
-                                                    <div key={item.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3.5 bg-stone-50 hover:bg-white hover:shadow-md rounded-2xl border border-stone-100/50 transition-all relative overflow-hidden group gap-3">
-                                                        <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${expiry.sideColor}`} />
-                                                        
-                                                        <div className="flex items-center gap-3 pl-2">
-                                                            <span className="text-3xl bg-white p-1.5 rounded-xl border border-stone-200/50 shadow-inner group-hover:scale-110 transition-transform">
-                                                                {item.category === 'Rau củ & Trái cây' ? '🥬' : item.category === 'Thịt & Hải sản' ? '🥩' : item.category === 'Sữa & Đồ hộp' ? '🥛' : '🥫'}
-                                                            </span>
-                                                            <div>
-                                                                <h4 className="font-extrabold text-stone-800 text-xs flex items-center gap-1.5 font-sans">
-                                                                    {item.name}
-                                                                    {item.isCustom && <span className="bg-amber-100 text-amber-800 text-[8px] px-1.5 py-0.5 rounded-full font-bold">Nguyên liệu lạ</span>}
-                                                                </h4>
-                                                                <p className="text-[10px] font-bold text-stone-400 mt-0.5">SL: {item.quantity} | {item.compartment}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex justify-between sm:justify-end items-center gap-3 pl-2 sm:pl-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-200/40">
-                                                            <span className={`text-[9px] font-extrabold border px-2.5 py-1 rounded-full ${expiry.badgeStyle.textColor} ${expiry.badgeStyle.bgColor} ${expiry.badgeStyle.borderColor} ${expiry.isPulse ? 'alert-pulse animate-pulse' : ''}`}>
-                                                                {expiry.label}
-                                                            </span>
-                                                            <button onClick={() => handleDeleteFood(item.id)} className="text-stone-300 hover:text-red-500 transition-colors text-xs p-1">🗑️</button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* TAB 2: TRỢ LÝ AI CHATBOT */}
-                                {activeTab === 'ai' && (
-                                    <div className="flex-1 flex flex-col lg:flex-row gap-6 font-sans">
-                                        <div className="flex-1 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-stone-100 pb-4 lg:pb-0 lg:pr-6">
-                                            <div className="space-y-3 overflow-y-auto max-h-[260px] flex-1 pr-2 mb-4">
-                                                {chatHistory.map((chat, idx) => (
-                                                    <div key={idx} className={`max-w-[85%] p-3 sm:p-3.5 rounded-2xl text-[11px] sm:text-xs font-bold leading-relaxed shadow-sm transition-all ${
-                                                        chat.sender === 'user' ? 'bg-amber-300 text-stone-900 ml-auto rounded-tr-none' : 'bg-stone-50 text-stone-800 rounded-tl-none border border-stone-100'
-                                                    }`}>
-                                                        {chat.text}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-2 bg-stone-50 p-2 rounded-2xl border border-stone-100 min-h-[46px]">
-                                                <input 
-                                                    type="text" 
-                                                    className="flex-1 bg-transparent px-2 text-xs focus:outline-none min-h-[38px]"
-                                                    placeholder="Gõ lệnh hoặc hỏi trợ lý..."
-                                                    value={chatInput}
-                                                    onChange={(e) => setChatInput(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                                                />
-                                                <button onClick={handleSendChat} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold px-4 rounded-xl text-xs shadow-md transition transform active:scale-95">Gửi</button>
-                                            </div>
-                                        </div>
-
-                                        <div className="w-full lg:w-72 flex flex-col gap-4 overflow-y-auto max-h-[280px] lg:max-h-[340px] pr-1">
-                                            <h4 className="font-extrabold text-stone-700 text-xs uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                                                <span>📋</span> Lệnh mẫu nhanh (Nhấn để điền)
-                                            </h4>
-                                            
-                                            {/* Nhóm 1: CRUD */}
-                                            <div className="space-y-2">
-                                                <p className="text-[9px] font-black text-amber-600 uppercase">1. Quản lý thực phẩm (CRUD)</p>
-                                                {[
-                                                    { cmd: 'Hãy thêm 1 chai dầu ăn vào ngăn mát', label: 'Thêm dầu ăn' },
-                                                    { cmd: 'Thêm 500gr thịt bò vào ngăn đông', label: 'Thêm 500g thịt bò' },
-                                                    { cmd: 'Xóa món cà chua khỏi danh sách', label: 'Xóa cà chua' },
-                                                    { cmd: 'Sửa số lượng sữa tươi thành 5 hộp', label: 'Sửa lượng sữa' }
-                                                ].map((c, i) => (
-                                                    <button key={i} onClick={() => handleQuickCommand(c.cmd)} className="w-full text-left bg-stone-50 hover:bg-amber-100/50 border border-stone-200/50 p-2 rounded-xl text-[10px] font-bold text-stone-600 transition block min-h-[34px]">
-                                                        👉 {c.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* Nhóm 2: Queries */}
-                                            <div className="space-y-2">
-                                                <p className="text-[9px] font-black text-teal-600 uppercase">2. Kiểm tra trạng thái & kho tủ</p>
-                                                {[
-                                                    { cmd: 'Món nào trong tủ sắp hết hạn?', label: 'Đồ nào sắp hết hạn?' },
-                                                    { cmd: 'Trứng gà còn bao nhiêu ngày nữa thì hỏng?', label: 'Hạn dùng Trứng gà?' },
-                                                    { cmd: 'Trong tủ còn sữa tươi không Fridgy?', label: 'Kiểm tra xem còn sữa không?' },
-                                                    { cmd: 'Liệt kê các thực phẩm trong ngăn đông', label: 'Xem thực phẩm ngăn đông' },
-                                                    { cmd: 'Trạng thái của bông cải xanh như thế nào?', label: 'Kiểm tra độ tươi bông cải' }
-                                                ].map((c, i) => (
-                                                    <button key={i} onClick={() => handleQuickCommand(c.cmd)} className="w-full text-left bg-stone-50 hover:bg-teal-100/30 border border-stone-200/50 p-2 rounded-xl text-[10px] font-bold text-stone-600 transition block min-h-[34px]">
-                                                        🔍 {c.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* Nhóm 3: Smart Suggestions */}
-                                            <div className="space-y-2">
-                                                <p className="text-[9px] font-black text-purple-600 uppercase">3. Đề xuất thực đơn thông minh</p>
-                                                {[
-                                                    { cmd: 'Tôi nên nấu gì với thịt bò và bông cải sắp hết hạn?', label: 'Nấu gì với bò + bông cải' },
-                                                    { cmd: 'Gợi ý cho tôi một món ăn tiết kiệm cho tối nay từ các món có sẵn trong tủ', label: 'Món ăn tiết kiệm tối nay' }
-                                                ].map((c, i) => (
-                                                    <button key={i} onClick={() => handleQuickCommand(c.cmd)} className="w-full text-left bg-stone-50 hover:bg-purple-100/30 border border-stone-200/50 p-2 rounded-xl text-[10px] font-bold text-stone-600 transition block min-h-[34px] font-sans">
-                                                        💡 {c.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* Nhóm 4: Stats & Safety Warnings */}
-                                            <div className="space-y-2">
-                                                <p className="text-[9px] font-black text-rose-600 uppercase">4. Thống kê, khuyên dùng & an toàn bé</p>
-                                                {[
-                                                    { cmd: 'Tháng này tôi đã vứt bỏ bao nhiêu thực phẩm?', label: 'Thống kê lãng phí' },
-                                                    { cmd: 'Cho tôi lời khuyên để cắt giảm lãng phí tiền bạc khi đi chợ', label: 'Lời khuyên tiết kiệm' },
-                                                    { cmd: 'Chồng tôi có thể xem danh sách này không?', label: 'Quyền chia sẻ gia đình' },
-                                                    { cmd: 'Cảnh báo tôi trước 2 ngày khi sữa của bé sắp hết hạn', label: 'Bật cảnh báo nghiêm ngặt đồ của bé' },
-                                                    { cmd: 'Thêm 2 túi đông trùng hạ thảo vào ngăn đông', label: 'Thử nghiệm Nguyên liệu lạ 🍄' }
-                                                ].map((c, i) => (
-                                                    <button key={i} onClick={() => handleQuickCommand(c.cmd)} className="w-full text-left bg-stone-50 hover:bg-rose-100/30 border border-stone-200/50 p-2 rounded-xl text-[10px] font-bold text-stone-600 transition block min-h-[34px]">
-                                                        🚨 {c.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* TAB 3: PHÂN TÍCH & THỰC ĐƠN */}
-                                {activeTab === 'recipes' && (
-                                    <div className="flex-1 flex flex-col lg:flex-row gap-6">
-                                        <div className="flex-1 space-y-4">
-                                            
-                                            {/* Phân khúc Gợi ý cho Nguyên Liệu Lạ có sẵn */}
-                                            {items.some(i => i.isCustom) && (
-                                                <div className="mb-4 bg-teal-50/60 border border-teal-200 p-4 rounded-2xl">
-                                                    <h3 className="font-extrabold text-teal-900 text-xs flex items-center gap-1.5 uppercase tracking-wider mb-2">
-                                                        <span>✨</span> Sáng tạo với nguyên liệu đặc biệt trong tủ
-                                                    </h3>
-                                                    <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
-                                                        {items.filter(i => i.isCustom).map((item, itemIdx) => (
-                                                            <div key={itemIdx} className="bg-white/80 p-3 rounded-xl border border-teal-100 shadow-xs">
-                                                                <span className="bg-teal-100 text-teal-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase">
-                                                                    Nguyên liệu: {item.name}
-                                                                </span>
-                                                                <div className="mt-2 space-y-2">
-                                                                    {RecipeEngine.generateForCustomIngredient(item.name).map((recipe, rIdx) => (
-                                                                        <div key={rIdx} className="border-l-2 border-teal-400 pl-2 text-left">
-                                                                            <h5 className="font-black text-stone-800 text-[11px]">{recipe.name}</h5>
-                                                                            <p className="text-[10px] text-stone-500 mt-0.5 leading-relaxed">{recipe.desc}</p>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <h3 className="font-extrabold text-stone-800 text-xs flex items-center gap-1.5 uppercase tracking-wider">
-                                                <span>🍳</span> Thực đơn khuyên dùng (Khớp tốt nhất)
-                                            </h3>
-                                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-                                                {matchedRecipes.map((item, idx) => (
-                                                    <div key={idx} className="p-4 bg-amber-50/50 border border-amber-200/50 rounded-2xl">
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <h4 className="font-black text-amber-950 text-xs">{item.recipe.name}</h4>
-                                                            <span className="bg-amber-200 text-amber-800 font-extrabold text-[9px] px-2 py-0.5 rounded-full whitespace-nowrap font-sans">
-                                                                Khớp: {Math.round(item.matchScore * 100)}%
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">{item.recipe.desc}</p>
-                                                        {item.criticalMatchCount > 0 && (
-                                                            <div className="text-[9px] text-red-600 font-extrabold mt-1">
-                                                                🔥 Chứa {item.criticalMatchCount} nguyên liệu sắp hết hạn gấp!
-                                                            </div>
-                                                        )}
-                                                        <div className="mt-3 flex gap-1.5 flex-wrap">
-                                                            {item.recipe.requiredIngredients.map(ing => (
-                                                                <span key={ing} className="bg-white px-2 py-0.5 text-[9px] rounded-full text-stone-500 font-bold border border-stone-100 shadow-sm">
-                                                                    {ing}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <h3 className="font-extrabold text-stone-800 text-xs flex items-center gap-1.5 uppercase tracking-wider pt-2">
-                                                <span>🍲</span> Danh mục các món ăn cơ bản hàng ngày
-                                            </h3>
-                                            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                                                {BasicDishes.map((dish, idx) => (
-                                                    <div key={idx} className="p-3 bg-stone-50 border border-stone-100 rounded-xl flex justify-between items-center">
-                                                        <div>
-                                                            <h4 className="font-bold text-stone-800 text-xs">{dish.name}</h4>
-                                                            <p className="text-[9px] text-stone-400 mt-0.5">{dish.desc}</p>
-                                                        </div>
-                                                        <span className="bg-stone-200/50 text-stone-600 font-bold text-[8px] px-2 py-0.5 rounded-full font-sans">
-                                                            {dish.category}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex-1 border-t lg:border-t-0 lg:border-l border-stone-100 pt-4 lg:pt-0 lg:pl-6 space-y-4">
-                                            <h3 className="font-extrabold text-stone-800 text-xs flex items-center gap-1.5 uppercase tracking-wider">
-                                                <span>📊</span> Thống kê hoạt động
-                                            </h3>
-                                            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100/50 shadow-inner">
-                                                <p className="text-[9px] text-stone-400 font-black mb-4 uppercase tracking-wider">Tiêu thụ vs Hao hụt theo tháng (%)</p>
-                                                <div className="flex justify-between items-end h-28 px-2">
-                                                    {monthlyHistoryData.map((data, idx) => (
-                                                        <div key={idx} className="flex flex-col items-center flex-1">
-                                                            <div className="flex items-end gap-1.5 h-20 w-full justify-center">
-                                                                <div className="w-3 bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-full" style={{ height: `${data.consumed}%` }} />
-                                                                <div className="w-3 bg-gradient-to-t from-orange-500 to-rose-400 rounded-t-full" style={{ height: `${data.wasted}%` }} />
-                                                            </div>
-                                                            <span className="text-[9px] font-black text-stone-400 mt-1.5">{data.month}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100/50 shadow-inner">
-                                                <p className="text-[9px] text-stone-400 font-black mb-3 uppercase tracking-wider">Tỷ lệ cơ cấu thực phẩm trong tủ</p>
-                                                <div className="space-y-2">
-                                                    {stats.distribution.map((dist, idx) => (
-                                                        <div key={idx}>
-                                                            <div className="flex justify-between text-[9px] text-stone-500 font-extrabold">
-                                                                <span>{dist.category}</span>
-                                                                <span>{dist.percentage}% ({dist.count} món)</span>
-                                                            </div>
-                                                            <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden mt-0.5 shadow-inner">
-                                                                <div 
-                                                                    className="bg-gradient-to-r from-amber-400 to-orange-400 h-full rounded-full" 
-                                                                    style={{ width: `${dist.percentage}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* TAB 4: CÀI ĐẶT & CHẨN ĐOÁN TEST SUITE */}
-                                {activeTab === 'settings' && (
-                                    <div className="flex-1 space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            
-                                            {/* Phần cấu hình nhận thông báo */}
-                                            <div className="space-y-4 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/30">
-                                                <h4 className="font-extrabold text-xs text-amber-950 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <span>🔔</span> Cấu hình thông báo đẩy về máy cá nhân
-                                                </h4>
-                                                
-                                                <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-stone-100">
-                                                    <span className="text-[10px] font-bold text-stone-500 uppercase">Quyền truy cập:</span>
-                                                    {notificationPermission === 'granted' ? (
-                                                        <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-2.5 py-1 rounded-full">ĐÃ CẤP QUYỀN 🟢</span>
-                                                    ) : notificationPermission === 'denied' ? (
-                                                        <span className="bg-red-100 text-red-800 text-[9px] font-black px-2.5 py-1 rounded-full">BỊ CHẶN/TỪ CHỐI 🔴</span>
-                                                    ) : (
-                                                        <span className="bg-yellow-100 text-yellow-800 text-[9px] font-black px-2.5 py-1 rounded-full">CHƯA KÍCH HOẠT 🟡</span>
-                                                    )}
-                                                </div>
-
-                                                <p className="text-[10px] text-stone-600 leading-relaxed font-semibold">
-                                                    💡 <strong>Lưu ý về chính sách bảo mật:</strong> Các trình duyệt hiện đại chỉ cấp quyền thông báo đẩy thực tế qua kết nối mã hóa an toàn <code>HTTPS</code> hoặc máy chủ cục bộ <code>localhost</code>. 
-                                                    <br />
-                                                    Nếu bạn sử dụng giao thức file tĩnh hoặc HTTP không mã hóa, trình duyệt sẽ khóa tính năng này. Tuy nhiên, hệ thống đã tự động kích hoạt <strong>Thông báo nội bộ In-App Fallback System</strong> để hiển thị toàn bộ cảnh báo trực tiếp trên màn hình một cách trực quan nhất.
-                                                </p>
-                                                
-                                                <div className="space-y-2">
-                                                    {notificationPermission !== 'granted' && (
-                                                        <button 
-                                                            onClick={handleRequestPermissionClick}
-                                                            className="w-full bg-amber-200 hover:bg-amber-300 text-amber-950 font-extrabold py-2.5 rounded-xl text-xs flex items-center justify-center min-h-[40px]"
-                                                        >
-                                                            📱 Yêu cầu cấp quyền nhận thông báo đẩy
-                                                        </button>
-                                                    )}
-
-                                                    <div className="border-t border-stone-200/50 pt-2 space-y-2">
-                                                        <p className="text-[9px] font-bold text-stone-400 uppercase">Gửi thử cảnh báo đẩy mẫu (Persona Test):</p>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <button 
-                                                                onClick={() => handlePersonaNotificationTest('baby')}
-                                                                className="bg-stone-900 hover:bg-stone-800 text-white font-extrabold py-2 rounded-xl text-[10px] min-h-[36px]"
-                                                            >
-                                                                🍼 Đồ ăn dặm bé Mai
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handlePersonaNotificationTest('salmon')}
-                                                                className="bg-stone-900 hover:bg-stone-800 text-white font-extrabold py-2 rounded-xl text-[10px] min-h-[36px]"
-                                                            >
-                                                                🐟 Cá hồi của Thảo
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Phần cấu hình tham số & test suite */}
-                                            <div className="space-y-4">
-                                                <h4 className="font-extrabold text-xs text-amber-950 uppercase tracking-widest">Nhiệt độ ngăn tủ & Cảnh báo hạn</h4>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhiệt độ ngăn mát ({tempCooler}°C)</label>
-                                                    <input 
-                                                        type="range" min="1" max="10" 
-                                                        value={tempCooler} onChange={(e) => {
-                                                            setTempCooler(Number(e.target.value));
-                                                            setLiveActivityToast(`Đã thiết lập nhiệt độ ngăn mát là ${e.target.value}°C.`);
-                                                        }}
-                                                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhiệt độ ngăn đá ({tempFreezer}°C)</label>
-                                                    <input 
-                                                        type="range" min="-25" max="-10" 
-                                                        value={tempFreezer} onChange={(e) => {
-                                                            setTempFreezer(Number(e.target.value));
-                                                            setLiveActivityToast(`Đã thiết lập nhiệt độ ngăn đông là ${e.target.value}°C.`);
-                                                        }}
-                                                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhận diện "CẢNH BÁO" trước:</label>
-                                                    <select 
-                                                        className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs bg-white font-bold text-stone-600 min-h-[40px]"
-                                                        value={warnDaysLimit}
-                                                        onChange={(e) => {
-                                                            setWarnDaysLimit(Number(e.target.value));
-                                                            setLiveActivityToast(`Cấu hình thời gian hiển thị cảnh báo trước ${e.target.value} ngày.`);
-                                                        }}
-                                                    >
-                                                        <option value={3}>Trước 3 ngày</option>
-                                                        <option value={5}>Trước 5 ngày</option>
-                                                        <option value={7}>Trước 7 ngày</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhận diện "BÁO ĐỘNG ĐỒ EM BÉ" trước:</label>
-                                                    <input 
-                                                        type="number" min="1" max="5" 
-                                                        value={pediatricWarnLimit} onChange={(e) => {
-                                                            setPediatricWarnLimit(Number(e.target.value));
-                                                            setLiveActivityToast(`Đã điều chỉnh cảnh báo nghiêm ngặt đồ của bé trước ${e.target.value} ngày.`);
-                                                        }}
-                                                        className="w-full border-2 border-stone-100 rounded-xl px-3 py-1 text-xs text-stone-700 font-bold min-h-[40px]"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <button 
-                                                        onClick={runUnitTests} 
-                                                        className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs min-h-[42px] flex items-center justify-center animate-pulse"
-                                                    >
-                                                        Chạy kiểm thử chẩn đoán hệ thống
-                                                    </button>
-                                                    {testResults && (
-                                                        <div className="space-y-1 mt-2 text-[10px]">
-                                                            {testResults.map((r, i) => (
-                                                                <div key={i} className="flex justify-between font-bold bg-stone-50 p-1.5 rounded border border-stone-100">
-                                                                    <span>{r.name}</span>
-                                                                    <span className={r.status === 'PASS' ? 'text-emerald-600' : 'text-red-500'}>● {r.status}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                )}
-
-                            </div>
-
-                            {/* CHIA SẺ THÀNH VIÊN CO-LIVING */}
-                            <div className="bg-white/80 backdrop-blur-md p-4 rounded-[1.5rem] border border-amber-100 shadow-md flex flex-col md:flex-row gap-4 justify-between items-center z-10 w-full mt-4 font-sans">
-                                <div className="flex flex-wrap gap-1.5 items-center w-full md:w-auto">
-                                    <span className="text-xs font-black text-amber-950 mr-1 block w-full md:w-auto">👥 Phòng chung:</span>
-                                    {roommates.map((r, idx) => (
-                                        <span key={idx} className="bg-white border border-stone-100 text-[10px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 text-stone-700 shadow-sm">
-                                            {r.avatar} {r.name} ({r.role})
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto justify-end">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Tên..." 
-                                        value={inviteName}
-                                        onChange={(e) => setInviteName(e.target.value)}
-                                        className="border-2 border-stone-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none w-28 text-stone-700 font-bold min-h-[38px]"
-                                    />
-                                    <button 
-                                        onClick={() => {
-                                            if (inviteName.trim()) {
-                                                setRoommates([...roommates, { name: inviteName, avatar: '🙋', role: 'Thành viên' }]);
-                                                setLiveActivityToast(`Đã gửi lời mời tham gia tới thành viên "${inviteName}".`);
-                                                setInviteName('');
-                                            }
-                                        }}
-                                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 font-extrabold px-3 py-1 rounded-xl text-xs min-h-[38px] flex items-center"
-                                    >
-                                        Mời
-                                    </button>
-                                </div>
-                            </div>
-
-                        </div>
+                    {/* Input Area */}
+                    <div className="border-t-2 border-purple-200 bg-white p-4 flex gap-2 shadow-lg">
+                        <input
+                            type="text"
+                            placeholder="Nhập lệnh hoặc câu hỏi..."
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            className="flex-1 px-4 py-2 border-2 border-purple-300 rounded-full outline-none focus:border-purple-600 focus:shadow-lg text-sm transition-all"
+                        />
+                        <button
+                            onClick={handleSendMessage}
+                            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-full font-bold text-sm transition-all transform hover:scale-110 shadow-lg"
+                        >
+                            📤 Gửi
+                        </button>
                     </div>
-
-                    {/* MODAL THÊM ĐỒ THỦ CÔNG */}
-                    {showAddModal && (
-                        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 backdrop-blur-sm p-3">
-                            <div className="bg-white rounded-[2rem] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-amber-100">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-black text-base sm:text-lg text-amber-950">Thêm Thực Phẩm Mới</h3>
-                                    <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 p-1">✕</button>
-                                </div>
-                                <form onSubmit={handleAddManualItem} className="space-y-4">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">TÊN THỰC PHẨM</label>
-                                        <input 
-                                            type="text" required
-                                            className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-stone-700 min-h-[40px]"
-                                            placeholder="Ví dụ: Thịt bò phi lê, sâm ngọc linh..."
-                                            value={newFood.name}
-                                            onChange={(e) => setNewFood({...newFood, name: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">SỐ LƯỢNG</label>
-                                            <input 
-                                                type="text" required
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-stone-700 min-h-[40px]"
-                                                placeholder="Ví dụ: 3 quả, 500g"
-                                                value={newFood.quantity}
-                                                onChange={(e) => setNewFood({...newFood, quantity: e.target.value})}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">DANH MỤC</label>
-                                            <select 
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-bold text-stone-600 min-h-[40px]"
-                                                value={newFood.category}
-                                                onChange={(e) => setNewFood({...newFood, category: e.target.value})}
-                                            >
-                                                <option value="Thịt & Hải sản">Thịt & Hải sản 🥩</option>
-                                                <option value="Sữa & Đồ hộp">Sữa & Đồ hộp 🥛</option>
-                                                <option value="Rau củ & Trái cây">Rau củ & Trái cây 🍎</option>
-                                                <option value="Đồ khô & Chế biến sẵn">Đồ khô & Chế biến sẵn 🥫</option>
-                                                <option value="Đồ uống">Đồ uống 🍹</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">VỊ TRÍ LƯU TRỮ</label>
-                                            <select 
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white font-bold text-stone-600 min-h-[40px]"
-                                                value={newFood.compartment}
-                                                onChange={(e) => setNewFood({...newFood, compartment: e.target.value})}
-                                            >
-                                                <option value="Ngăn mát">Ngăn mát</option>
-                                                <option value="Ngăn đông">Ngăn đông</option>
-                                                <option value="Cánh tủ">Cánh tủ</option>
-                                                <option value="Ngăn đồ ăn dặm">Ngăn đồ ăn dặm 🍼</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">HẠN SỬ DỤNG *(Để trống để tự động tính)*</label>
-                                            <input 
-                                                type="date"
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none text-stone-600 font-bold min-h-[40px]"
-                                                value={newFood.expiryDate}
-                                                onChange={(e) => setNewFood({...newFood, expiryDate: e.target.value})}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1">
-                                        <input 
-                                            type="checkbox" 
-                                            id="pediatric_chkbx"
-                                            checked={newFood.isPediatricCritical} 
-                                            onChange={(e) => setNewFood({...newFood, isPediatricCritical: e.target.checked})}
-                                            className="w-4 h-4 accent-red-500"
-                                        />
-                                        <label htmlFor="pediatric_chkbx" className="text-[10px] text-red-500 font-extrabold cursor-pointer select-none">🚨 Bảo vệ nghiêm ngặt (Đồ dùng nhi đồng)</label>
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg shadow-orange-500/15 transition-all duration-300 min-h-[42px]">
-                                        Xác nhận bỏ vào tủ
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* TRÌNH HỘI THOẠI XÁC NHẬN "NGUYÊN LIỆU LẠ" (STRANGE INGREDIENT WIZARD) */}
-                    {strangeItemToConfirm && (
-                        <div className="fixed inset-0 bg-black/60 flex justify-center items-end sm:items-center z-50 backdrop-blur-sm p-3 animate-fade-in">
-                            <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2rem] max-w-md w-full p-6 shadow-2xl border-t sm:border border-amber-100 max-h-[90vh] overflow-y-auto">
-                                <div className="text-center mb-5">
-                                    <span className="text-4xl block mb-2">🧐</span>
-                                    <h3 className="font-black text-lg text-stone-900">Phát Hiện Nguyên Liệu Lạ!</h3>
-                                    <p className="text-[11px] text-stone-500 leading-relaxed mt-1">
-                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc các danh mục tiêu chuẩn. Hãy giúp trợ lý AI định hình nhanh phương án bảo quản:
-                                    </p>
-                                </div>
-                                <div className="space-y-4 font-sans">
-                                    {/* 1. Chọn ngăn tủ */}
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">NGĂN LƯU TRỮ CHỈ ĐỊNH</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {['Ngăn mát', 'Ngăn đông', 'Cánh tủ', 'Ngăn đồ ăn dặm'].map(comp => (
-                                                <button
-                                                    key={comp}
-                                                    type="button"
-                                                    onClick={() => setStrangeItemToConfirm({...strangeItemToConfirm, compartment: comp})}
-                                                    className={`py-2 px-3 text-[11px] font-bold rounded-xl border transition-all ${strangeItemToConfirm.compartment === comp ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm' : 'bg-stone-50 border-stone-100 text-stone-600'}`}
-                                                >
-                                                    {comp}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* 2. Chọn hạn sử dụng khuyên dùng */}
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">THỜI HẠN BÁO QUẢN THIẾT LẬP</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { days: 3, label: '3 ngày (Ngắn)' },
-                                                { days: 7, label: '7 ngày (Chuẩn)' },
-                                                { days: 30, label: '30 ngày (Dài)' }
-                                            ].map(opt => {
-                                                const targetDate = new Date();
-                                                targetDate.setDate(targetDate.getDate() + opt.days);
-                                                const dateString = targetDate.toISOString().split('T')[0];
-
-                                                return (
-                                                    <button
-                                                        key={opt.days}
-                                                        type="button"
-                                                        onClick={() => setStrangeItemToConfirm({...strangeItemToConfirm, expiryDate: dateString})}
-                                                        className={`py-2 px-1 text-[10px] font-bold rounded-xl border transition-all ${strangeItemToConfirm.expiryDate === dateString ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm' : 'bg-stone-50 border-stone-100 text-stone-600'}`}
-                                                    >
-                                                        {opt.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* 3. Đề xuất công thức nấu ăn tự động dựa trên tên nguyên liệu lạ */}
-                                    <div className="border-t border-stone-100 pt-3">
-                                        <label className="block text-[10px] font-extrabold text-teal-600 mb-1.5 uppercase tracking-wider">💡 Gợi ý món ăn phù hợp từ AI:</label>
-                                        <div className="space-y-2 bg-teal-50/60 p-3 rounded-xl border border-teal-100">
-                                            {RecipeEngine.generateForCustomIngredient(strangeItemToConfirm.name).map((recipe, rIdx) => (
-                                                <div key={rIdx} className="text-left">
-                                                    <p className="text-[10px] font-black text-teal-950">✦ {recipe.name}</p>
-                                                    <p className="text-[9px] text-stone-600 leading-relaxed">{recipe.desc}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* 4. Phân cấp an toàn cho bé */}
-                                    <div className="flex items-center gap-2 border-t border-stone-100 pt-3">
-                                        <input 
-                                            type="checkbox" 
-                                            id="strange_pedi_cb"
-                                            checked={strangeItemToConfirm.isPediatricCritical || false}
-                                            onChange={(e) => setStrangeItemToConfirm({...strangeItemToConfirm, isPediatricCritical: e.target.checked})}
-                                            className="w-4 h-4 accent-red-500"
-                                        />
-                                        <label htmlFor="strange_pedi_cb" className="text-[11px] text-red-500 font-extrabold cursor-pointer select-none">
-                                            🍼 Thiết lập bảo vệ khẩn cấp cho bé (Mai Persona)
-                                        </label>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setStrangeItemToConfirm(null)}
-                                            className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs"
-                                        >
-                                            Hủy bỏ
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                const today = new Date();
-                                                today.setHours(0,0,0,0);
-                                                const exp = new Date(strangeItemToConfirm.expiryDate);
-                                                exp.setHours(0,0,0,0);
-                                                const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-                                                handleConfirmStrangeIngredient(
-                                                    strangeItemToConfirm.compartment,
-                                                    diff > 0 ? diff : 5,
-                                                    strangeItemToConfirm.isPediatricCritical
-                                                );
-                                            }}
-                                            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-md"
-                                        >
-                                            Xác nhận cất tủ
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                 </div>
             );
         }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<FreshKeepApp />);
+
+        function FreshKeepApp() {
+            const [items, setItems] = useState(initialFoodItems);
+            const [showAIChat, setShowAIChat] = useState(false);
+
+            return (
+                <div className="min-h-screen p-6 bg-gradient-to-br from-yellow-50/50 via-orange-50/30 to-pink-50/40">
+                    <div className="max-w-7xl mx-auto">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 mb-2">
+                                🧊 FreshKeep Smart Fridge
+                            </h1>
+                            <p className="text-gray-600 text-lg font-semibold">Quản lý tủ lạnh thông minh với AI - Gợi ý công thức & Lập kế hoạch ăn uống</p>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            {/* Current Items List */}
+                            <div className="lg:col-span-1 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl border-2 border-blue-300 p-6 h-[500px] overflow-y-auto shadow-lg hover:shadow-xl transition-all">
+                                <h2 className="text-xl font-black text-blue-900 mb-4 sticky top-0 bg-gradient-to-r from-blue-50 to-cyan-50 pb-2">📦 Nguyên liệu hiện có</h2>
+                                <div className="space-y-2">
+                                    {items.map(item => {
+                                        const expiry = ExpiryEngine.calculate(item);
+                                        return (
+                                            <div key={item.id} className={`p-3 rounded-xl border-l-4 ${expiry.badgeStyle.bgColor} ${expiry.badgeStyle.borderColor} shadow-sm hover:shadow-md transition-all transform hover:scale-105`}>
+                                                <p className="font-bold text-sm text-gray-900">{item.name}</p>
+                                                <p className={`text-xs font-bold ${expiry.badgeStyle.textColor}`}>{expiry.label}</p>
+                                                <p className="text-xs text-gray-600">SL: {item.quantity}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* AI Chat Box - Main Feature */}
+                            <div className="lg:col-span-3 h-[500px]">
+                                {showAIChat ? (
+                                    <AIRecipeChatBox items={items} />
+                                ) : (
+                                    <div className="bg-gradient-to-br from-purple-100 via-blue-100 to-cyan-100 rounded-3xl border-4 border-dashed border-purple-400 h-full flex flex-col items-center justify-center p-8 text-center shadow-2xl hover:shadow-3xl transition-all">
+                                        <div className="text-7xl mb-4 animate-bounce">🤖</div>
+                                        <h3 className="text-3xl font-black text-purple-800 mb-3">AI Chef Assistant</h3>
+                                        <p className="text-gray-700 mb-6 max-w-md leading-relaxed">
+                                            Bật AI để nhận <span className="font-bold text-purple-800">gợi ý công thức</span>, <span className="font-bold text-blue-800">phân tích dinh dưỡng</span> chi tiết và <span className="font-bold text-cyan-800">lập kế hoạch ăn uống tuần</span> dựa trên nguyên liệu sắp hết hạn
+                                        </p>
+                                        <button
+                                            onClick={() => setShowAIChat(true)}
+                                            className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 hover:from-purple-600 hover:via-blue-600 hover:to-cyan-600 text-white px-10 py-4 rounded-full font-black text-lg transition-all transform hover:scale-110 shadow-xl hover:shadow-2xl"
+                                        >
+                                            💬 Bật AI Assistant
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<FreshKeepApp />, document.getElementById('root'));
     </script>
-<a href="https://www.coze.com/store/agent/7654772159012700165" 
-   target="_blank"
-   style="position:fixed; bottom:20px; right:20px; width:60px; height:60px; background:linear-gradient(135deg,#f97316,#fb923c); border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:28px; box-shadow:0 4px 20px rgba(249,115,22,0.4); z-index:9999; cursor:pointer;">
-  🤖
-</a>
 </body>
 </html>
