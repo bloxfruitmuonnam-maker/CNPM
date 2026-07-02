@@ -1176,12 +1176,12 @@
                     {/* MAIN SPLIT-VIEW */}
                     <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 z-10 font-sans">
                         
-                        /* COLUMN 1: TỦ LẠNH VẬT LÝ */
+                        {/* COLUMN 1: TỦ LẠNH VẬT LÝ */}
                         <div className="hidden lg:block lg:col-span-4">
                             {renderFridgeVisual()}
                         </div>
 
-                        /* COLUMN 2: TOÀN BỘ PHẦN BẢNG ĐIỀU KHIỂN & TABS CHỨC NĂNG */}
+                        {/* COLUMN 2: TOÀN BỘ PHẦN BẢNG ĐIỀU KHIỂN & TABS CHỨC NĂNG */}
                         <div className="col-span-1 lg:col-span-8 flex flex-col gap-4 sm:gap-6 w-full">
                             
                             {/* MENU TABS ĐIỀU HƯỚNG */}
@@ -1571,249 +1571,329 @@
                                                         type="range" min="-25" max="-10" 
                                                         value={tempFreezer} onChange={(e) => {
                                                             setTempFreezer(Number(e.target.value));
-                                                            setLiveActivityToast(`Đã thiết lập nhiệt độ ngăn đá là ${e.target.value}°C.`);
+                                                            setLiveActivityToast(`Đã thiết lập nhiệt độ ngăn đông là ${e.target.value}°C.`);
                                                         }}
                                                         className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                                    <div>
-                                                        <label className="text-[9px] font-black text-stone-400 block mb-1 uppercase">Cảnh báo hạn (Ngày)</label>
-                                                        <input 
-                                                            type="number" min="1" max="10" 
-                                                            className="w-full border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-bold font-sans"
-                                                            value={warnDaysLimit} onChange={(e) => setWarnDaysLimit(Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[9px] font-black text-stone-400 block mb-1 uppercase">Hạn Đồ của bé (Ngày)</label>
-                                                        <input 
-                                                            type="number" min="1" max="7" 
-                                                            className="w-full border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-bold font-sans"
-                                                            value={pediatricWarnLimit} onChange={(e) => setPediatricWarnLimit(Number(e.target.value))}
-                                                        />
-                                                    </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhận diện "CẢNH BÁO" trước:</label>
+                                                    <select 
+                                                        className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs bg-white font-bold text-stone-600 min-h-[40px]"
+                                                        value={warnDaysLimit}
+                                                        onChange={(e) => {
+                                                            setWarnDaysLimit(Number(e.target.value));
+                                                            setLiveActivityToast(`Cấu hình thời gian hiển thị cảnh báo trước ${e.target.value} ngày.`);
+                                                        }}
+                                                    >
+                                                        <option value={3}>Trước 3 ngày</option>
+                                                        <option value={5}>Trước 5 ngày</option>
+                                                        <option value={7}>Trước 7 ngày</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-stone-400 block mb-1">Nhận diện "BÁO ĐỘNG ĐỒ EM BÉ" trước:</label>
+                                                    <input 
+                                                        type="number" min="1" max="5" 
+                                                        value={pediatricWarnLimit} onChange={(e) => {
+                                                            setPediatricWarnLimit(Number(e.target.value));
+                                                            setLiveActivityToast(`Đã điều chỉnh cảnh báo nghiêm ngặt đồ của bé trước ${e.target.value} ngày.`);
+                                                        }}
+                                                        className="w-full border-2 border-stone-100 rounded-xl px-3 py-1 text-xs text-stone-700 font-bold min-h-[40px]"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <button 
+                                                        onClick={runUnitTests} 
+                                                        className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs min-h-[42px] flex items-center justify-center animate-pulse"
+                                                    >
+                                                        Chạy kiểm thử chẩn đoán hệ thống
+                                                    </button>
+                                                    {testResults && (
+                                                        <div className="space-y-1 mt-2 text-[10px]">
+                                                            {testResults.map((r, i) => (
+                                                                <div key={i} className="flex justify-between font-bold bg-stone-50 p-1.5 rounded border border-stone-100">
+                                                                    <span>{r.name}</span>
+                                                                    <span className={r.status === 'PASS' ? 'text-emerald-600' : 'text-red-500'}>● {r.status}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* Hệ thống QA/Test Suite tự động */}
-                                        <div className="border-t border-stone-100 pt-6 space-y-3">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-extrabold text-xs text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <span>🧪</span> Hệ thống QA Test Suite tự động (Chẩn đoán liên tục)
-                                                </h4>
-                                                <button onClick={runUnitTests} className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white text-[10px] font-black px-4 py-2 rounded-xl shadow-md transition transform active:scale-95">
-                                                    Khởi chạy bộ kiểm thử
-                                                </button>
-                                            </div>
-
-                                            {testResults && (
-                                                <div className="bg-stone-900 rounded-2xl p-4 font-mono text-[10px] text-stone-300 space-y-2 shadow-inner">
-                                                    <p className="text-emerald-400 font-bold border-b border-stone-800 pb-1 flex justify-between">
-                                                        <span>▶ STARTING FRESHKEEP CORE UNIT TESTS...</span>
-                                                        <span>[SUCCESS]</span>
-                                                    </p>
-                                                    {testResults.map((t, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center py-0.5">
-                                                            <span>✔ Test Case #{idx + 1}: {t.name}</span>
-                                                            <span className={t.status === 'PASS' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>[{t.status}]</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Danh sách thành viên trong căn hộ */}
-                                        <div className="border-t border-stone-100 pt-6 space-y-4">
-                                            <h4 className="font-extrabold text-xs text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                                                <span>👥</span> Đồng bộ & Chia sẻ thành viên trong gia đình
-                                            </h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                {roommates.map((r, idx) => (
-                                                    <div key={idx} className="p-3 bg-stone-50 border border-stone-100 rounded-2xl flex items-center gap-3">
-                                                        <span className="text-3xl">{r.avatar}</span>
-                                                        <div className="text-left">
-                                                            <h5 className="font-black text-stone-800 text-xs">{r.name}</h5>
-                                                            <p className="text-[9px] font-bold text-stone-400 uppercase mt-0.5">{r.role}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-2 max-w-md bg-stone-50 p-1.5 rounded-xl border border-stone-200">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Nhập tên người thân muốn mời..." 
-                                                    className="flex-1 bg-transparent px-3 text-xs focus:outline-none"
-                                                    value={inviteName}
-                                                    onChange={(e) => setInviteName(e.target.value)}
-                                                />
-                                                <button 
-                                                    onClick={() => {
-                                                        if (!inviteName.trim()) return;
-                                                        setRoommates([...roommates, { name: inviteName, avatar: '🙋', role: 'Thành viên mới' }]);
-                                                        setLiveActivityToast(`Đã gửi lời mời đồng bộ tài khoản tới: ${inviteName}`);
-                                                        setInviteName('');
-                                                    }}
-                                                    className="bg-stone-900 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg whitespace-nowrap"
-                                                >
-                                                    Gửi lời mời
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 )}
+
                             </div>
+
+                            {/* CHIA SẺ THÀNH VIÊN CO-LIVING */}
+                            <div className="bg-white/80 backdrop-blur-md p-4 rounded-[1.5rem] border border-amber-100 shadow-md flex flex-col md:flex-row gap-4 justify-between items-center z-10 w-full mt-4 font-sans">
+                                <div className="flex flex-wrap gap-1.5 items-center w-full md:w-auto">
+                                    <span className="text-xs font-black text-amber-950 mr-1 block w-full md:w-auto">👥 Phòng chung:</span>
+                                    {roommates.map((r, idx) => (
+                                        <span key={idx} className="bg-white border border-stone-100 text-[10px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 text-stone-700 shadow-sm">
+                                            {r.avatar} {r.name} ({r.role})
+                                        </span>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2 w-full md:w-auto justify-end">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Tên..." 
+                                        value={inviteName}
+                                        onChange={(e) => setInviteName(e.target.value)}
+                                        className="border-2 border-stone-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none w-28 text-stone-700 font-bold min-h-[38px]"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if (inviteName.trim()) {
+                                                setRoommates([...roommates, { name: inviteName, avatar: '🙋', role: 'Thành viên' }]);
+                                                setLiveActivityToast(`Đã gửi lời mời tham gia tới thành viên "${inviteName}".`);
+                                                setInviteName('');
+                                            }
+                                        }}
+                                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 font-extrabold px-3 py-1 rounded-xl text-xs min-h-[38px] flex items-center"
+                                    >
+                                        Mời
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    {/* WIZARD MODAL XỬ LÝ NGUYÊN LIỆU LẠ */}
-                    {strangeItemToConfirm && (
-                        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-                            <div className="bg-white rounded-[2.5rem] p-6 max-w-sm w-full border border-stone-100 shadow-2xl animate-scale-up text-left">
-                                <div className="text-center mb-4">
-                                    <span className="text-4xl">🍄</span>
-                                    <h3 className="font-black text-stone-800 text-sm uppercase tracking-wider mt-2">Trình cấu hình nguyên liệu lạ</h3>
-                                    <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
-                                        Hệ thống phát hiện sản phẩm <strong>"{strangeItemToConfirm.name}"</strong> không nằm trong bộ từ khóa danh mục tiêu chuẩn. Hãy thiết lập thủ công tham số bảo quản lý tưởng.
-                                    </p>
-                                </div>
-                                <div className="space-y-4 font-sans">
-                                    <div>
-                                        <label className="text-[10px] font-extrabold text-stone-500 block mb-1">VỊ TRÍ BẢO QUẢN</label>
-                                        <select id="strange-comp" className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none">
-                                            <option value="Ngăn đông">Ngăn đông (Trữ đông lâu dài)</option>
-                                            <option value="Ngăn mát">Ngăn mát (Sử dụng hàng ngày)</option>
-                                            <option value="Ngăn đồ ăn dặm">Ngăn đồ ăn dặm (Chế độ nhi đồng)</option>
-                                            <option value="Cánh tủ">Cánh tủ (Gia vị & Đồ uống)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-extrabold text-stone-500 block mb-1">SỐ NGÀY HẠN SỬ DỤNG GỢI Ý (DAYS)</label>
-                                        <input type="number" id="strange-days" min="1" defaultValue="7" className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none" />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" id="strange-pediatric" className="w-4 h-4 text-amber-500 border-stone-300 rounded focus:ring-amber-400" />
-                                        <label htmlFor="strange-pediatric" className="text-[10px] font-extrabold text-stone-700">Kích hoạt giám sát nhi đồng nghiêm ngặt</label>
-                                    </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <button 
-                                            onClick={() => setStrangeItemToConfirm(null)}
-                                            className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-600 font-extrabold py-2.5 rounded-xl text-xs transition"
-                                        >
-                                            Hủy bỏ
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                const comp = document.getElementById('strange-comp').value;
-                                                const days = document.getElementById('strange-days').value;
-                                                const isPed = document.getElementById('strange-pediatric').checked;
-                                                handleConfirmStrangeIngredient(comp, days, isPed);
-                                            }}
-                                            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition"
-                                        >
-                                            Xác nhận lưu tủ
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL THÊM MÓN THỦ CÔNG */}
+                    {/* MODAL THÊM ĐỒ THỦ CÔNG */}
                     {showAddModal && (
-                        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-                            <div className="bg-white rounded-[2.5rem] p-6 max-w-md w-full border border-stone-100 shadow-2xl text-left">
-                                <h3 className="font-black text-stone-800 text-base uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <span>➕</span> Thêm thực phẩm thủ công
-                                </h3>
-                                <form onSubmit={handleAddManualItem} className="space-y-4 font-sans">
+                        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 backdrop-blur-sm p-3">
+                            <div className="bg-white rounded-[2rem] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-amber-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-black text-base sm:text-lg text-amber-950">Thêm Thực Phẩm Mới</h3>
+                                    <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 p-1">✕</button>
+                                </div>
+                                <form onSubmit={handleAddManualItem} className="space-y-4">
                                     <div>
-                                        <label className="text-[10px] font-extrabold text-stone-500 block mb-1">TÊN THỰC PHẨM</label>
+                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">TÊN THỰC PHẨM</label>
                                         <input 
                                             type="text" required
-                                            className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
-                                            placeholder="Ví dụ: Cá hồi phi lê, Sữa chua,..."
+                                            className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-stone-700 min-h-[40px]"
+                                            placeholder="Ví dụ: Thịt bò phi lê, sâm ngọc linh..."
                                             value={newFood.name}
                                             onChange={(e) => setNewFood({...newFood, name: e.target.value})}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-[10px] font-extrabold text-stone-500 block mb-1">SỐ LƯỢNG</label>
+                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">SỐ LƯỢNG</label>
                                             <input 
                                                 type="text" required
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
-                                                placeholder="Ví dụ: 500g, 3 hộp..."
+                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-stone-700 min-h-[40px]"
+                                                placeholder="Ví dụ: 3 quả, 500g"
                                                 value={newFood.quantity}
                                                 onChange={(e) => setNewFood({...newFood, quantity: e.target.value})}
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-extrabold text-stone-500 block mb-1">DANH MỤC CHUẨN</label>
+                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">DANH MỤC</label>
                                             <select 
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-bold text-stone-600 min-h-[40px]"
                                                 value={newFood.category}
                                                 onChange={(e) => setNewFood({...newFood, category: e.target.value})}
                                             >
-                                                <option value="Thịt & Hải sản">Thịt & Hải sản</option>
-                                                <option value="Rau củ & Trái cây">Rau củ & Trái cây</option>
-                                                <option value="Sữa & Đồ hộp">Sữa & Đồ hộp</option>
-                                                <option value="Đồ khô & Chế biến sẵn">Đồ khô & Chế biến sẵn</option>
-                                                <option value="Đồ uống">Đồ uống</option>
+                                                <option value="Thịt & Hải sản">Thịt & Hải sản 🥩</option>
+                                                <option value="Sữa & Đồ hộp">Sữa & Đồ hộp 🥛</option>
+                                                <option value="Rau củ & Trái cây">Rau củ & Trái cây 🍎</option>
+                                                <option value="Đồ khô & Chế biến sẵn">Đồ khô & Chế biến sẵn 🥫</option>
+                                                <option value="Đồ uống">Đồ uống 🍹</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-[10px] font-extrabold text-stone-500 block mb-1">NGĂN LƯU TRỮ</label>
+                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">VỊ TRÍ LƯU TRỮ</label>
                                             <select 
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white font-bold text-stone-600 min-h-[40px]"
                                                 value={newFood.compartment}
                                                 onChange={(e) => setNewFood({...newFood, compartment: e.target.value})}
                                             >
                                                 <option value="Ngăn mát">Ngăn mát</option>
                                                 <option value="Ngăn đông">Ngăn đông</option>
                                                 <option value="Cánh tủ">Cánh tủ</option>
-                                                <option value="Ngăn đồ ăn dặm">Ngăn đồ ăn dặm</option>
+                                                <option value="Ngăn đồ ăn dặm">Ngăn đồ ăn dặm 🍼</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-extrabold text-stone-500 block mb-1">HẠN DÙNG (BỎ TRỐNG = TỰ TÍNH)</label>
+                                            <label className="block text-[10px] font-bold text-stone-400 mb-1">HẠN SỬ DỤNG *(Để trống để tự động tính)*</label>
                                             <input 
-                                                type="date" 
-                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                                                type="date"
+                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-sm focus:outline-none text-stone-600 font-bold min-h-[40px]"
                                                 value={newFood.expiryDate}
                                                 onChange={(e) => setNewFood({...newFood, expiryDate: e.target.value})}
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setShowAddModal(false)}
-                                            className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-600 font-extrabold py-2.5 rounded-xl text-xs transition"
-                                        >
-                                            Hủy bỏ
-                                        </button>
-                                        <button 
-                                            type="submit"
-                                            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition"
-                                        >
-                                            Cất vào tủ lạnh
-                                        </button>
+                                    <div className="flex items-center gap-2 py-1">
+                                        <input 
+                                            type="checkbox" 
+                                            id="pediatric_chkbx"
+                                            checked={newFood.isPediatricCritical} 
+                                            onChange={(e) => setNewFood({...newFood, isPediatricCritical: e.target.checked})}
+                                            className="w-4 h-4 accent-red-500"
+                                        />
+                                        <label htmlFor="pediatric_chkbx" className="text-[10px] text-red-500 font-extrabold cursor-pointer select-none">🚨 Bảo vệ nghiêm ngặt (Đồ dùng nhi đồng)</label>
                                     </div>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg shadow-orange-500/15 transition-all duration-300 min-h-[42px]">
+                                        Xác nhận bỏ vào tủ
+                                    </button>
                                 </form>
                             </div>
                         </div>
                     )}
+
+                    {/* TRÌNH HỘI THOẠI XÁC NHẬN "NGUYÊN LIỆU LẠ" (STRANGE INGREDIENT WIZARD) */}
+                    {strangeItemToConfirm && (
+                        <div className="fixed inset-0 bg-black/60 flex justify-center items-end sm:items-center z-50 backdrop-blur-sm p-3 animate-fade-in">
+                            <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2rem] max-w-md w-full p-6 shadow-2xl border-t sm:border border-amber-100 max-h-[90vh] overflow-y-auto">
+                                <div className="text-center mb-5">
+                                    <span className="text-4xl block mb-2">🧐</span>
+                                    <h3 className="font-black text-lg text-stone-900">Phát Hiện Nguyên Liệu Lạ!</h3>
+                                    <p className="text-[11px] text-stone-500 leading-relaxed mt-1">
+                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc các danh mục tiêu chuẩn. Hãy giúp trợ lý AI định hình nhanh phương án bảo quản:
+                                    </p>
+                                </div>
+                                <div className="space-y-4 font-sans">
+                                    {/* 1. Chọn ngăn tủ */}
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">NGĂN LƯU TRỮ CHỈ ĐỊNH</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['Ngăn mát', 'Ngăn đông', 'Cánh tủ', 'Ngăn đồ ăn dặm'].map(comp => (
+                                                <button
+                                                    key={comp}
+                                                    type="button"
+                                                    onClick={() => setStrangeItemToConfirm({...strangeItemToConfirm, compartment: comp})}
+                                                    className={`py-2 px-3 text-[11px] font-bold rounded-xl border transition-all ${strangeItemToConfirm.compartment === comp ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm' : 'bg-stone-50 border-stone-100 text-stone-600'}`}
+                                                >
+                                                    {comp}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Chọn hạn sử dụng khuyên dùng */}
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-stone-400 mb-1">THỜI HẠN BÁO QUẢN THIẾT LẬP</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { days: 3, label: '3 ngày (Ngắn)' },
+                                                { days: 7, label: '7 ngày (Chuẩn)' },
+                                                { days: 30, label: '30 ngày (Dài)' }
+                                            ].map(opt => {
+                                                const targetDate = new Date();
+                                                targetDate.setDate(targetDate.getDate() + opt.days);
+                                                const dateString = targetDate.toISOString().split('T')[0];
+
+                                                return (
+                                                    <button
+                                                        key={opt.days}
+                                                        type="button"
+                                                        onClick={() => setStrangeItemToConfirm({...strangeItemToConfirm, expiryDate: dateString})}
+                                                        className={`py-2 px-1 text-[10px] font-bold rounded-xl border transition-all ${strangeItemToConfirm.expiryDate === dateString ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm' : 'bg-stone-50 border-stone-100 text-stone-600'}`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 3. Đề xuất công thức nấu ăn tự động dựa trên tên nguyên liệu lạ */}
+                                    <div className="border-t border-stone-100 pt-3">
+                                        <label className="block text-[10px] font-extrabold text-teal-600 mb-1.5 uppercase tracking-wider">💡 Gợi ý món ăn phù hợp từ AI:</label>
+                                        <div className="space-y-2 bg-teal-50/60 p-3 rounded-xl border border-teal-100">
+                                            {RecipeEngine.generateForCustomIngredient(strangeItemToConfirm.name).map((recipe, rIdx) => (
+                                                <div key={rIdx} className="text-left">
+                                                    <p className="text-[10px] font-black text-teal-950">✦ {recipe.name}</p>
+                                                    <p className="text-[9px] text-stone-600 leading-relaxed">{recipe.desc}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* 4. Phân cấp an toàn cho bé */}
+                                    <div className="flex items-center gap-2 border-t border-stone-100 pt-3">
+                                        <input 
+                                            type="checkbox" 
+                                            id="strange_pedi_cb"
+                                            checked={strangeItemToConfirm.isPediatricCritical || false}
+                                            onChange={(e) => setStrangeItemToConfirm({...strangeItemToConfirm, isPediatricCritical: e.target.checked})}
+                                            className="w-4 h-4 accent-red-500"
+                                        />
+                                        <label htmlFor="strange_pedi_cb" className="text-[11px] text-red-500 font-extrabold cursor-pointer select-none">
+                                            🍼 Thiết lập bảo vệ khẩn cấp cho bé (Mai Persona)
+                                        </label>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setStrangeItemToConfirm(null)}
+                                            className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs"
+                                        >
+                                            Hủy bỏ
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                const today = new Date();
+                                                today.setHours(0,0,0,0);
+                                                const exp = new Date(strangeItemToConfirm.expiryDate);
+                                                exp.setHours(0,0,0,0);
+                                                const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+                                                handleConfirmStrangeIngredient(
+                                                    strangeItemToConfirm.compartment,
+                                                    diff > 0 ? diff : 5,
+                                                    strangeItemToConfirm.isPediatricCritical
+                                                );
+                                            }}
+                                            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-2.5 rounded-xl text-xs shadow-md"
+                                        >
+                                            Xác nhận cất tủ
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             );
         }
-
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FreshKeepApp />);
     </script>
+<script src="https://sf-cdn.coze.com/obj/coze-web-sdk/10/coze-web-sdk.js"></script>
+<script>
+  new CozeWebSDK.WebChat({
+    config: {
+      bot_id: '7654772159012700165',
+    },
+    auth: {
+      type: 'token',
+      token: 'pat_pTd05TlR2v75H3IVbFZfUuhVMJDaTEUefyN9p13rfLO79BlAJGl5ezleEpBQGQVZ',
+    },
+    componentProps: {
+      title: 'Vua Ẩm Thực AI',
+      chatButtonProps: {
+        icon: 'https://img.icons8.com/emoji/96/orange-emoji.png',
+      },
+    },
+  });
+</script>
+      }
+    }
+  });
+</script>
 </body>
 </html>
