@@ -403,7 +403,108 @@
                 ];
             }
         };
+/* ==========================================================
+           BỔ SUNG QUẢN LÝ CHATBOX AI & LỊCH SỬ NẤU ĂN (FRESHKEEP AI)
+           ========================================================== */
+        const [isChatOpen, setIsChatOpen] = useState(false);
+        const [chatInput, setChatInput] = useState("");
+        const [isAiLoading, setIsAiLoading] = useState(false);
+        const [chatMessages, setChatMessages] = useState([
+            { 
+                id: "welcome", 
+                sender: "ai", 
+                text: "Chào bạn! Tôi là trợ lý tủ lạnh thông minh **FreshKeep AI** 🍊. Hãy gửi tin nhắn hoặc nhấn nút bên dưới để tôi phân tích nguyên liệu, gợi ý món ăn (ưu tiên món sắp hết hạn), phân tích calo chi tiết và lên thực đơn cả tuần cho gia đình nhé!" 
+            }
+        ]);
 
+        // State lưu trữ lịch sử món ăn đã nấu
+        const [cookedHistory, setCookedHistory] = useState(() => {
+            const saved = localStorage.getItem("freshkeep_cooked_history");
+            return saved ? JSON.parse(saved) : [
+                { id: "h1", name: "Gà xào sả ớt", cookedAt: new Date(Date.now() - 3 * 3600000).toISOString(), calories: 450 },
+                { id: "h2", name: "Trứng cuộn phô mai", cookedAt: new Date(Date.now() - 24 * 3600000).toISOString(), calories: 310 }
+            ];
+        });
+
+        // Tự động lưu lịch sử nấu ăn vào bộ nhớ trình duyệt
+        useEffect(() => {
+            localStorage.setItem("freshkeep_cooked_history", JSON.stringify(cookedHistory));
+        }, [cookedHistory]);
+
+        // Hàm gọi API gửi dữ liệu tủ lạnh lên Server để AI phân tích
+        const handleSendChatToAi = async (customPrompt) => {
+            const textToSend = customPrompt || chatInput;
+            if (!textToSend.trim()) return;
+
+            // Thêm tin nhắn của người dùng vào khung chat
+            const userMsg = { id: Date.now().toString(), sender: "user", text: textToSend };
+            setChatMessages(prev => [...prev, userMsg]);
+            setChatInput("");
+            setIsAiLoading(true);
+
+            // Thu thập nguyên liệu hiện tại trong tủ để gửi kèm cho AI phân tích
+            const currentIngredients = items.map(item => {
+                const today = new Date();
+                const expiry = new Date(item.expiryDate);
+                const diffTime = expiry.getTime() - today.getTime();
+                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return {
+                    name: item.name,
+                    quantity: item.quantity,
+                    compartment: item.compartment,
+                    daysRemaining: daysRemaining
+                };
+            });
+
+            try {
+                const response = await fetch("/api/gemini/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ingredients: currentIngredients,
+                        message: textToSend,
+                        chatHistory: chatMessages.map(m => ({ sender: m.sender, text: m.text }))
+                    })
+                });
+
+                if (!response.ok) throw new Error("Không kết nối được server");
+
+                const data = await response.json();
+                setChatMessages(prev => [...prev, {
+                    id: (Date.now() + 1).toString(),
+                    sender: "ai",
+                    text: data.text
+                }]);
+            } catch (err) {
+                console.error("Lỗi kết nối AI:", err);
+                
+                // --- PHƯƠNG ÁN PHÒNG NGỪA (FALLBACK MÔ PHỎNG) KHI CHƯA CHẠY SERVER BACKEND ---
+                const expiringItems = currentIngredients.filter(i => i.daysRemaining <= 3);
+                const expiringText = expiringItems.map(i => `• **${i.name}** (còn ${i.daysRemaining} ngày)`).join("\n");
+                
+                setTimeout(() => {
+                    setChatMessages(prev => [...prev, {
+                        id: (Date.now() + 1).toString(),
+                        sender: "ai",
+                        text: `### 🍊 KẾ HOẠCH DINH DƯỠNG & THỰC ĐƠN TUẦN (Mô phỏng)\n*Máy chủ AI đang ngoại tuyến hoặc chưa cấu hình API Key. Dưới đây là phân tích tủ lạnh của bạn từ bộ nhớ cục bộ:*\n\n#### 1. Ưu tiên giải cứu nguyên liệu sắp hết hạn:\n${expiringText || "• Tuyệt vời! Không có nguyên liệu nào sắp hỏng trong 3 ngày tới."}\n\n#### 2. Gợi ý các món ngon chế biến ngay:\n* 🍗 **Gà xào sả ớt** (~450 kcal): Sử dụng ức gà phi lê.\n* 🥗 **Gà xào ớt chuông hành tây** (~420 kcal): Đầy đủ vitamin C.\n* 🥩 **Bò lúc lắc** (~520 kcal): Thịt bò Mỹ kết hợp hành tây.\n\n#### 3. Thực đơn hợp lý cả tuần của bạn:\n* **Thứ 2 - Thứ 4**: Tập trung dùng các món gà xào & canh rau cải ngọt thanh.\n* **Thứ 5 - Thứ 6**: Món mặn từ thịt bò hầm củ quả giàu sắt.\n* **Thứ 7 - Chủ Nhật**: Thưởng thức súp dặm, cơm chiên Dương Châu cùng gia đình.`
+                    }]);
+                }, 1000);
+            } finally {
+                setIsAiLoading(false);
+            }
+        };
+
+        // Hàm ghi nhận lịch sử khi bấm xác nhận đã nấu món ăn từ gợi ý AI
+        const handleSaveCookedDish = (recipeName, calories) => {
+            const newDish = {
+                id: Date.now().toString(),
+                name: recipeName,
+                cookedAt: new Date().toISOString(),
+                calories: calories || 350
+            };
+            setCookedHistory(prev => [newDish, ...prev]);
+            setLiveActivityToast(`Đã lưu "${recipeName}" vào lịch sử nấu ăn!`);
+        };
         /* ==========================================================
            BỘ PHÂN TÍCH NLP DỰA TRÊN THỜI GIAN THỰC (DYNAMIC AI ENGINE)
            ========================================================== */
@@ -3102,7 +3203,150 @@
                 </div>
             );
         }
+{/* ==========================================================
+                       GIAO DIỆN CHATBOX AI & NÚT QUẢ CAM NỔI (FROSTED GLASS THEME)
+                       ========================================================== */}
+                    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
+                        
+                        {/* Khung chatbox nhỏ mở ra khi nhấn Quả cam */}
+                        {isChatOpen && (
+                            <div className="w-80 sm:w-96 h-[500px] bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-slide-in">
+                                
+                                {/* Header của Chatbox */}
+                                <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span className="text-xs font-black uppercase tracking-wider text-orange-400">Siêu Trợ Lý FreshKeep AI 🍊</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsChatOpen(false)}
+                                        className="text-slate-400 hover:text-white transition-colors p-1"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
 
+                                {/* Các Tab nhỏ bên trong chatbox (để xem lịch sử hoặc chat) */}
+                                <div className="flex border-b border-white/10 text-[10px] font-bold bg-white/5">
+                                    <button className="flex-1 py-2 text-center text-orange-400 border-b-2 border-orange-500">
+                                        💬 Trò chuyện AI
+                                    </button>
+                                    <div className="flex-1 py-2 text-center text-slate-400 border-r border-white/5 flex items-center justify-center gap-1">
+                                        ⏱️ Đã nấu: {cookedHistory.length} món
+                                    </div>
+                                </div>
+
+                                {/* Nội dung trò chuyện hiển thị dạng hội thoại */}
+                                <div className="flex-1 p-4 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-white/10">
+                                    {chatMessages.map((msg, idx) => (
+                                        <div 
+                                            key={msg.id || idx} 
+                                            className={`max-w-[85%] p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm transition-all whitespace-pre-line ${
+                                                msg.sender === "user"
+                                                    ? "bg-orange-500/20 border border-orange-500/30 text-white ml-auto rounded-tr-none"
+                                                    : "bg-white/5 border border-white/10 text-slate-200 rounded-tl-none"
+                                            }`}
+                                        >
+                                            {/* Chuyển đổi ký tự in đậm thành hiển thị đẹp */}
+                                            {msg.text.split("\n").map((line, i) => {
+                                                if (line.startsWith("###")) return <h4 key={i} className="font-extrabold text-orange-400 text-xs mt-2 mb-1">{line.replace("###", "")}</h4>;
+                                                if (line.startsWith("####")) return <h5 key={i} className="font-bold text-slate-300 text-[11px] mt-1.5">{line.replace("####", "")}</h5>;
+                                                
+                                                // Thay thế **text** thành in đậm
+                                                let formattedLine = line;
+                                                const boldRegex = /\*\*(.*?)\*\*/g;
+                                                const parts = [];
+                                                let lastIndex = 0;
+                                                let match;
+                                                
+                                                while ((match = boldRegex.exec(line)) !== null) {
+                                                    parts.push(line.substring(lastIndex, match.index));
+                                                    parts.push(<strong key={match.index} className="text-orange-300">{match[1]}</strong>);
+                                                    lastIndex = boldRegex.lastIndex;
+                                                }
+                                                parts.push(line.substring(lastIndex));
+
+                                                return <p key={i} className="min-h-[14px]">{parts.length > 1 ? parts : line}</p>;
+                                            })}
+                                        </div>
+                                    ))}
+
+                                    {isAiLoading && (
+                                        <div className="bg-white/5 border border-white/10 rounded-2xl p-3 rounded-tl-none max-w-[80%] flex items-center gap-2 text-slate-400 text-[11px]">
+                                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce"></span>
+                                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{animationDelay: "0.2s"}}></span>
+                                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{animationDelay: "0.4s"}}></span>
+                                            <span>AI đang phân tích tủ lạnh của bạn...</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Gợi ý câu hỏi nhanh (Smart Action Chips) */}
+                                <div className="p-2 bg-white/5 border-t border-white/10 flex gap-1.5 overflow-x-auto no-scrollbar">
+                                    <button 
+                                        onClick={() => handleSendChatToAi("Phân tích nguyên liệu tủ lạnh và gợi ý món ăn")}
+                                        className="bg-white/5 hover:bg-white/10 text-[9px] font-bold px-2.5 py-1.5 rounded-lg text-slate-300 whitespace-nowrap border border-white/5"
+                                    >
+                                        🔍 Phân tích tủ lạnh
+                                    </button>
+                                    <button 
+                                        onClick={() => handleSendChatToAi("Lập thực đơn hợp lý cho cả tuần dựa trên các món tủ lạnh hiện có")}
+                                        className="bg-white/5 hover:bg-white/10 text-[9px] font-bold px-2.5 py-1.5 rounded-lg text-slate-300 whitespace-nowrap border border-white/5"
+                                    >
+                                        📅 Lên thực đơn tuần
+                                    </button>
+                                    <button 
+                                        onClick={() => handleSendChatToAi("Các món nào ưu tiên nấu gấp vì sắp hết hạn dùng?")}
+                                        className="bg-white/5 hover:bg-white/10 text-[9px] font-bold px-2.5 py-1.5 rounded-lg text-slate-300 whitespace-nowrap border border-white/5"
+                                    >
+                                        🚨 Món sắp hết hạn
+                                    </button>
+                                </div>
+
+                                {/* Thanh nhập câu hỏi tin nhắn */}
+                                <div className="p-3 bg-slate-900 border-t border-white/10">
+                                    <div className="bg-white/5 border border-white/10 rounded-xl flex items-center px-3 py-1.5">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Hỏi về calo, thực đơn, nguyên liệu..." 
+                                            value={chatInput}
+                                            onChange={(e) => setChatInput(e.target.value)}
+                                            onKeyDown={(e) => e.key === "Enter" && handleSendChatToAi()}
+                                            className="bg-transparent border-none focus:ring-0 focus:outline-none text-xs w-full placeholder:text-slate-500 text-white"
+                                        />
+                                        <button 
+                                            onClick={() => handleSendChatToAi()}
+                                            className="text-orange-500 hover:text-orange-400 p-1 transition-transform active:scale-90"
+                                        >
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* ICON QUẢ CAM NỔI Ở GÓC DƯỚI BÊN PHẢI (The Orange Icon Button) */}
+                        <button 
+                            onClick={() => setIsChatOpen(!isChatOpen)}
+                            className="w-14 h-14 bg-orange-500 hover:bg-orange-600 rounded-2xl shadow-2xl shadow-orange-500/40 flex items-center justify-center transition-all group active:scale-95"
+                            title="Trợ lý Tủ lạnh AI"
+                        >
+                            <div className="relative">
+                                {/* Orange fruit stylized SVG icon */}
+                                <svg className="w-9 h-9 text-white transition-transform group-hover:rotate-12" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#F97316"/>
+                                    <path d="M12 2C12.5 1 14 1 14 1" stroke="#15803D" strokeWidth="2" strokeLinecap="round"/>
+                                    <circle cx="15" cy="9" r="1" fill="white" fillOpacity="0.3"/>
+                                </svg>
+                                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-white text-[8px] font-black text-orange-600 items-center justify-center">AI</span>
+                                </span>
+                            </div>
+                        </button>
+                    </div>
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FreshKeepApp />);
     </script>
