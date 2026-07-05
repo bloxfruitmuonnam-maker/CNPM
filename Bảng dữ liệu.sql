@@ -144,16 +144,3 @@ CREATE TABLE ThanhVienTuLanh
 
 
 
-
-
-
-
-
-CREATE TABLE LoiMoiThamGia
-(
-    MaLoiMoi INT IDENTITY(1,1),
-    MaNguoiGui INT,
-    MaNguoiNhan INT,
-    MaTuLanh INT,
-    TrangThai NVARCHAR(20)
-);
