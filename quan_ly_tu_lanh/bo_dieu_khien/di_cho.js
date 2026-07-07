@@ -1,30 +1,30 @@
 const db = require('../cau_hinh/co_so_du_lieu');
 
-exports.layTatCaThucPham = (req, res) => {
+exports.layDanhSachDiCho = (req, res) => {
     const data = db.readDB();
-    res.json(data.items);
+    res.json(data.shoppingList);
 };
 
-exports.themThucPham = (req, res) => {
+exports.themDoCanMua = (req, res) => {
     const data = db.readDB();
-    const thucPhamMoi = req.body;
-    data.items.unshift(thucPhamMoi);
+    const doMoi = req.body;
+    data.shoppingList.push(doMoi);
     db.writeDB(data);
-    res.status(201).json(thucPhamMoi);
+    res.status(201).json(doMoi);
 };
 
-exports.suaThucPham = (req, res) => {
+exports.suaTrangThaiMua = (req, res) => {
     const data = db.readDB();
     const { id } = req.params;
-    data.items = data.items.map(item => item.id === id ? { ...item, ...req.body } : item);
+    data.shoppingList = data.shoppingList.map(item => item.id === id ? { ...item, ...req.body } : item);
     db.writeDB(data);
     res.json({ success: true });
 };
 
-exports.xoaThucPham = (req, res) => {
+exports.xoaDoCanMua = (req, res) => {
     const data = db.readDB();
     const { id } = req.params;
-    data.items = data.items.filter(item => item.id !== id);
+    data.shoppingList = data.shoppingList.filter(item => item.id !== id);
     db.writeDB(data);
     res.json({ success: true });
 };
