@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: radial-gradient(circle at top left, #FFFDF9 0%, #FFF3DA 40%, #E6FFFA 100%);
+    overflow-x: hidden;
+}
+
+/* Hoạt họa bồng bềnh tự nhiên */
+.floating-food {
+    animation: float-animation 6s ease-in-out infinite;
+    user-select: none;
+    pointer-events: none;
+}
+
+@keyframes float-animation {
+    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+    50% { transform: translateY(-12px) rotate(5deg) scale(1.03); }
+}
+
+/* Cảnh báo nghiêm ngặt nhấp nháy */
+.alert-pulse {
+    animation: pulse-glow 2.5s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.97); box-shadow: 0 0 15px rgba(239, 68, 68, 0.45); }
+}
+
+/* Ẩn thanh cuộn */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Quét laser Barcode */
+.laser-line {
+    animation: scan-action 2s linear infinite;
+}
+
+@keyframes scan-action {
+    0% { top: 0%; }
+    50% { top: 100%; }
+    100% { top: 0%; }
+}
+
+@keyframes slide-in {
+    from { transform: translateY(1rem); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.25s ease-out forwards;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.2s ease-out forwards;
+}
+
+@keyframes orangePulse {
+    0% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.3); opacity: 0; }
+    100% { transform: scale(1); opacity: 0.4; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+#orange-ai-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    background-color: #1e293b;
+    border-color: #f97316;
+    box-shadow: 0 15px 30px rgba(249, 115, 22, 0.5);
+}
+
+#orange-ai-btn:hover #orange-emoji {
+    transform: scale(1.15) rotate(12deg);
+}
+
+.quick-chip:hover {
+    filter: brightness(1.25);
+    transform: translateY(-1px);
+}
+
+#chat-input:focus {
+    border-color: rgba(249, 115, 22, 0.6);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+#quick-actions::-webkit-scrollbar {
+    display: none;
+}
+
+#chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
