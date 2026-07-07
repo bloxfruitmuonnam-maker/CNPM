@@ -35,7 +35,13 @@ function FreshKeepApp() {
 
     const [items, setItems] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('storage');
+    
+    // --- CẬP NHẬT TẠI ĐÂY: Khởi tạo tab từ localStorage nếu có ---
+    const [activeTab, setActiveTab] = useState(() => {
+        const savedTab = localStorage.getItem('freshkeep_active_tab');
+        return savedTab ? savedTab : 'storage';
+    });
+    
     const [activeCompartment, setActiveCompartment] = useState('Tất cả');
 
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -55,7 +61,7 @@ function FreshKeepApp() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [coolerSensorTemp, setCoolerSensorTemp] = useState(4.0);
     const [freezerSensorTemp, setFreezerSensorTemp] = useState(-18.0);
-    const [liveActivityToast, setLiveActivityToast] = useState(null);
+const [liveActivityToast, setLiveActivityToast] = useState(null);
 
     const [shoppingList, setShoppingList] = useState([]);
     const [shoppingInput, setShoppingInput] = useState('');
@@ -80,6 +86,11 @@ function FreshKeepApp() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [newFood, setNewFood] = useState({ name: '', quantity: '', category: 'Thịt & Hải sản', compartment: 'Ngăn mát', expiryDate: '', isPediatricCritical: false, isCustom: false });
     const [healthNotice, setHealthNotice] = useState(null);
+
+    // --- CẬP NHẬT TẠI ĐÂY: Lưu tab vào localStorage mỗi khi chuyển đổi ---
+    useEffect(() => {
+        localStorage.setItem('freshkeep_active_tab', activeTab);
+    }, [activeTab]);
 
     useEffect(() => {
         api.getData().then(data => {
@@ -114,7 +125,7 @@ function FreshKeepApp() {
 
     const addProcessedFoodItem = async (foodItem) => {
         const finalItem = { id: Date.now().toString(), storage_location: foodItem.compartment, ...foodItem };
-        const healthWarn = ExpiryEngine.getHealthWarning(foodItem.name);
+const healthWarn = ExpiryEngine.getHealthWarning(foodItem.name);
         if (healthWarn) {
             setHealthNotice(healthWarn);
             setTimeout(() => setHealthNotice(null), 5000);
@@ -170,7 +181,7 @@ function FreshKeepApp() {
     const handleAddShoppingItem = async (name, category, qty = '1 phần') => {
         const targetName = name || shoppingInput;
         if (!targetName.trim()) return;
-        const newItem = { id: Date.now().toString(), name: targetName, quantity: qty, category: category || shoppingCategory, checked: false };
+const newItem = { id: Date.now().toString(), name: targetName, quantity: qty, category: category || shoppingCategory, checked: false };
         api.addShopping(newItem).then(() => {
             setShoppingList(prev => [...prev, newItem]);
             setShoppingInput('');
@@ -236,7 +247,7 @@ function FreshKeepApp() {
                 setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
             } else {
                 setChatHistory(prev => [...prev, { sender: 'fridgy', text: res.message }]);
-            }
+}
         }, 300);
     };
 
@@ -282,7 +293,7 @@ function FreshKeepApp() {
             <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans">
                 <span className="absolute top-10 left-10 text-7xl floating-food opacity-30">🥩</span>
                 <span className="absolute bottom-12 left-20 text-7xl floating-food opacity-30" style={{animationDelay: '1.2s'}}>🥛</span>
-                <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-md w-full border border-white/50 shadow-2xl z-10">
+<div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-md w-full border border-white/50 shadow-2xl z-10">
                     <div className="text-center mb-6">
                         <div className="inline-block p-4 bg-amber-100 rounded-full shadow-inner mb-3"><span className="text-5xl block floating-food">🥑</span></div>
                         <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 tracking-tight">FRESHKEEP</h1>
@@ -315,7 +326,7 @@ function FreshKeepApp() {
 
             <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 z-10">
                 <div className="hidden lg:block lg:col-span-4">
-                    <TuVatLy items={items} freezerSensorTemp={freezerSensorTemp} coolerSensorTemp={coolerSensorTemp} warnDaysLimit={warnDaysLimit} pediatricWarnLimit={pediatricWarnLimit} />
+<TuVatLy items={items} freezerSensorTemp={freezerSensorTemp} coolerSensorTemp={coolerSensorTemp} warnDaysLimit={warnDaysLimit} pediatricWarnLimit={pediatricWarnLimit} />
                 </div>
 
                 <div className="col-span-1 lg:col-span-8 flex flex-col gap-4 sm:gap-6 w-full">
@@ -345,7 +356,7 @@ function FreshKeepApp() {
                             />
                         )}
                         {activeTab === 'smart-kitchen' && <BepThongMinh smartRecipes={smartRecipes} handleCookRecipe={handleCookRecipe} handleAddMissingIngredientToShopping={(ing) => handleAddShoppingItem(ing, 'Rau củ & Trái cây')} items={items} BasicDishes={BasicDishes} />}
-                        {activeTab === 'shopping-planner' && <SoDiCho shoppingList={shoppingList} setShoppingList={setShoppingList} shoppingInput={shoppingInput} setShoppingInput={setShoppingInput} shoppingCategory={shoppingCategory} setShoppingCategory={setShoppingCategory} handleAddShoppingItem={handleAddShoppingItem} handleMarkAsBought={handleMarkAsBought} />}
+{activeTab === 'shopping-planner' && <SoDiCho shoppingList={shoppingList} setShoppingList={setShoppingList} shoppingInput={shoppingInput} setShoppingInput={setShoppingInput} shoppingCategory={shoppingCategory} setShoppingCategory={setShoppingCategory} handleAddShoppingItem={handleAddShoppingItem} handleMarkAsBought={handleMarkAsBought} />}
                         {activeTab === 'ai' && <TroLyAi items={items} chatHistory={chatHistory} chatInput={chatInput} setChatInput={setChatInput} handleExecuteCommand={handleExecuteCommand} />}
                         {activeTab === 'sharing-hub' && <ThanhVienChung roommates={roommates} editingMemberId={editingMemberId} setEditingMemberId={setEditingMemberId} editForm={editForm} setEditForm={setEditForm} currentUserIsAdmin={currentUserIsAdmin} handleStartEditMember={handleStartEditMember} handleSaveEditMember={handleSaveEditMember} handleDeleteMember={handleDeleteMember} handleToggleAdminPermission={handleToggleAdminPermission} handleAddMember={handleAddMember} userName={userName} syncLogs={syncLogs} triggerMockMarketSync={triggerMockMarketSync} />}
                         {activeTab === 'settings' && <ThietLap monthlyHistoryData={monthlyHistoryData} stats={stats} tempCooler={tempCooler} setTempCooler={setTempCooler} tempFreezer={tempFreezer} setTempFreezer={setTempFreezer} ecoMode={ecoMode} handleToggleEco={handleToggleEco} superCool={superCool} handleToggleSuperCool={handleToggleSuperCool} warnDaysLimit={warnDaysLimit} setWarnDaysLimit={setWarnDaysLimit} pediatricWarnLimit={pediatricWarnLimit} setPediatricWarnLimit={setPediatricWarnLimit} notificationPermission={notificationPermission} handleRequestPermissionClick={handleRequestPermissionClick} testResults={testResults} runUnitTests={() => setTestResults([{ name: 'Hệ thống an toàn', status: 'PASS' }])} />}
