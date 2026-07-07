@@ -1,0 +1,13 @@
+{
+  "name": "freshkeep-he-thong-tu-lanh-thong-minh",
+  "version": "1.0.0",
+  "description": "Hệ thống giám sát và quản lý tủ lạnh thông minh FreshKeep tách lớp",
+  "main": "may_chu.js",
+  "scripts": {
+    "start": "node may_chu.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
