@@ -89,7 +89,7 @@
             { id: '5', name: 'Sữa bột ăn dặm cho bé', quantity: '1 hộp', category: 'Sữa & Đồ hộp', compartment: 'Ngăn đồ ăn dặm', storage_location: 'Ngăn đồ ăn dặm', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: true, isCustom: false },
             { id: '6', name: 'Hành tây', quantity: '2 củ', category: 'Rau củ & Trái cây', compartment: 'Ngăn rau củ', storage_location: 'Ngăn rau củ', expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
             { id: '7', name: 'Bông cải xanh', quantity: '1 cây', category: 'Rau củ & Trái cây', compartment: 'Ngăn rau củ', storage_location: 'Ngăn rau củ', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false }
-];
+        ];
 
         const monthlyHistoryData = [
             { month: 'Tháng 3', consumed: 72, wasted: 28 },
@@ -381,7 +381,7 @@
                 }
                 if (lower.includes('măng') || lower.includes('nấm') || lower.includes('sen') || lower.includes('mộc nhĩ')) {
                     return [
-                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn với tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
+                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn with tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
                         { name: `Canh sườn heo hầm ${name}`, desc: `Ninh sườn non lấy nước ngọt, cho thêm ${name} hầm chín tới, rắc hành lá và tiêu thơm.` }
                     ];
                 }
@@ -394,7 +394,7 @@
                 return [
                     { 
                         name: `${name} xào tỏi ớt thập cẩm`, 
-                        desc: `Tận dụng các loại rau củ sẵn có trong ngăn mát, xào nhanh tay ${name} trên lửa lớn with tỏi phi thơm để giữ vị giòn dai.` 
+                        desc: `Tận dụng các loại rau củ sẵn có trong ngăn mát, xào nhanh tay ${name} trên lửa lớn với tỏi phi thơm để giữ vị giòn dai.` 
                     },
                     { 
                         name: `Canh súp thanh nhiệt cùng ${name}`, 
@@ -560,7 +560,7 @@
                     return { success: false, message: `Fridgy AI 🤖: Không tìm thấy thực phẩm nào khớp với tên "${targetName}" để thực hiện xóa.` };
                 }
 
-                // 8. SỬA SỐ LƯỢNG (CRUD)
+                // 8. SỬ SỬA SỐ LƯỢNG (CRUD)
                 if (normalized.startsWith('sửa số lượng') || normalized.startsWith('sửa')) {
                     const updateRegex = /(?:sửa\s+số\s+lượng\s+|sửa\s+)(.+?)\s+thành\s+(.+)$/i;
                     const updateMatch = rawText.match(updateRegex);
@@ -673,11 +673,22 @@
            4. PRESENTATION LAYER: REACT DASHBOARD & CONTROLLER
            ========================================================== */
         function FreshKeepApp() {
-            const [accounts, setAccounts] = useState([
+            // Hàm bổ trợ tải dữ liệu từ localStorage
+            const loadLocalData = (key, defaultValue) => {
+                try {
+                    const saved = localStorage.getItem(key);
+                    return saved ? JSON.parse(saved) : defaultValue;
+                } catch (e) {
+                    console.error("Lỗi khi tải dữ liệu từ localStorage:", e);
+                    return defaultValue;
+                }
+            };
+
+            const [accounts, setAccounts] = useState(() => loadLocalData('freshkeep_accounts', [
                 { email: 'mai.nguyen@gmail.com', password: '123456', name: 'Nguyễn Thị Mai', role: 'Mẹ bỉm sữa', avatar: '👩‍🍼', isAdmin: true },
                 { email: 'thao.tran@gmail.com', password: '123456', name: 'Trần Thu Thảo', role: 'Sinh viên', avatar: '👩‍🎓', isAdmin: false },
                 { email: 'bo.tre@gmail.com', password: '123456', name: 'Bố trẻ nhỏ', role: 'Chồng', avatar: '🙋‍♂️', isAdmin: false }
-            ]);
+            ]));
 
             const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [authMode, setAuthMode] = useState('login');
@@ -695,7 +706,7 @@
             const [userName, setUserName] = useState('Nguyễn Thị Mai');
             const [userRole, setUserRole] = useState('Mẹ bỉm sữa');
 
-            const [items, setItems] = useState(initialFoodItems);
+            const [items, setItems] = useState(() => loadLocalData('freshkeep_items', initialFoodItems));
             const [searchQuery, setSearchQuery] = useState('');
             const [activeTab, setActiveTab] = useState('storage'); 
             const [activeCompartment, setActiveCompartment] = useState('Tất cả');
@@ -725,21 +736,21 @@
             const [liveActivityToast, setLiveActivityToast] = useState(null);
 
             // Sổ đi chợ
-            const [shoppingList, setShoppingList] = useState([
+            const [shoppingList, setShoppingList] = useState(() => loadLocalData('freshkeep_shoppingList', [
                 { id: 's1', name: 'Trứng gà tươi', quantity: '10 quả', category: 'Sữa & Đồ hộp', checked: false },
                 { id: 's2', name: 'Rau chân vịt', quantity: '2 bó', category: 'Rau củ & Trái cây', checked: false }
-            ]);
+            ]));
             const [shoppingInput, setShoppingInput] = useState('');
             const [shoppingCategory, setShoppingCategory] = useState('Rau củ & Trái cây');
             const [isScanning, setIsScanning] = useState(false);
             const [scannerCameraSimulation, setScannerCameraSimulation] = useState(false);
 
             // Thành viên Co-living & Đồng bộ dữ liệu
-            const [roommates, setRoommates] = useState([
+            const [roommates, setRoommates] = useState(() => loadLocalData('freshkeep_roommates', [
                 { id: 'u1', name: 'Nguyễn Thị Mai', avatar: '👩‍🍼', role: 'Mẹ bỉm sữa', isAdmin: true },
                 { id: 'u2', name: 'Trần Thu Thảo', avatar: '👩‍🎓', role: 'Sinh viên', isAdmin: false },
                 { id: 'u3', name: 'Bố trẻ nhỏ', avatar: '🙋‍♂️', role: 'Chồng', isAdmin: false }
-            ]);
+            ]));
             const [inviteName, setInviteName] = useState('');
             const [inviteRole, setInviteRole] = useState('Thành viên');
             const [inviteAvatar, setInviteAvatar] = useState('👤');
@@ -766,6 +777,59 @@
             const [showAddModal, setShowAddModal] = useState(false);
             const [newFood, setNewFood] = useState({ name: '', quantity: '', category: 'Thịt & Hải sản', compartment: 'Ngăn mát', expiryDate: '', isPediatricCritical: false, isCustom: false });
             const [healthNotice, setHealthNotice] = useState(null);
+
+            // ĐỒNG BỘ DỮ LIỆU VÀO LOCALSTORAGE KHI CÓ THAY ĐỔI
+            useEffect(() => {
+                localStorage.setItem('freshkeep_accounts', JSON.stringify(accounts));
+            }, [accounts]);
+
+            useEffect(() => {
+                localStorage.setItem('freshkeep_items', JSON.stringify(items));
+            }, [items]);
+
+            useEffect(() => {
+                localStorage.setItem('freshkeep_shoppingList', JSON.stringify(shoppingList));
+            }, [shoppingList]);
+
+            useEffect(() => {
+                localStorage.setItem('freshkeep_roommates', JSON.stringify(roommates));
+            }, [roommates]);
+
+            // ==========================================================
+            // CƠ CHẾ ĐỒNG BỘ THỜI GIAN THỰC GIỮA CÁC TAB (STORAGE EVENT)
+            // ==========================================================
+            useEffect(() => {
+                const handleStorageEvent = (event) => {
+                    if (!event.newValue) return;
+                    
+                    try {
+                        if (event.key === 'freshkeep_items') {
+                            const updatedItems = JSON.parse(event.newValue);
+                            setItems(updatedItems);
+                            setLiveActivityToast("Đồng bộ: Kho thực phẩm vừa được cập nhật từ thành viên khác.");
+                            setSyncLogs(prev => [
+                                { id: Date.now(), text: `Hệ thống vừa đồng bộ danh sách thực phẩm từ thiết bị/tab khác.`, time: new Date().toLocaleTimeString().substring(0, 5) },
+                                ...prev
+                            ]);
+                        } else if (event.key === 'freshkeep_shoppingList') {
+                            setShoppingList(JSON.parse(event.newValue));
+                            setLiveActivityToast("Đồng bộ: Sổ đi chợ vừa được cập nhật.");
+                        } else if (event.key === 'freshkeep_roommates') {
+                            setRoommates(JSON.parse(event.newValue));
+                            setLiveActivityToast("Đồng bộ: Danh sách thành viên vừa được cập nhật.");
+                        } else if (event.key === 'freshkeep_accounts') {
+                            setAccounts(JSON.parse(event.newValue));
+                        }
+                    } catch (e) {
+                        console.error("Lỗi giải mã dữ liệu đồng bộ:", e);
+                    }
+                };
+
+                window.addEventListener('storage', handleStorageEvent);
+                return () => {
+                    window.removeEventListener('storage', handleStorageEvent);
+                };
+            }, []);
 
             // Danh sách Tab hỗ trợ màn hình Mobile và Desktop
             const tabs = [
@@ -2196,7 +2260,7 @@
                                                         { name: 'Sữa tươi ít đường', category: 'Sữa & Đồ hộp' }
                                                     ].map((rec, i) => (
                                                         <button 
-                                                            key={i}
+                                                            key={i} 
                                                             onClick={() => handleAddShoppingItem(rec.name, rec.category, '1 phần')}
                                                             className="w-full text-left bg-white hover:bg-amber-50 border border-stone-100 p-2.5 rounded-xl text-[10px] font-bold text-stone-700 transition flex justify-between items-center font-sans"
                                                         >
