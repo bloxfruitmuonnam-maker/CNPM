@@ -1,3 +1,17 @@
+Dưới đây là mã nguồn HTML được cập nhật toàn diện. Tính năng Gia nhập nhóm mới &
+Chia sẻ thông tin đã được tích hợp trực tiếp vào tab Thành viên & Đồng bộ.
+
+Hệ thống quản lý nhóm hoạt động theo cơ chế phân vùng dữ liệu động:
+
+  - Tạo nhóm mới: Tạo ra một mã định danh nhóm duy nhất (ví dụ: FK-A8B9C).
+  - Gia nhập nhóm bằng ID: Chuyển đổi toàn bộ cơ sở dữ liệu (Kho thực phẩm, Sổ
+    đi chợ, Thành viên) sang nhóm tương ứng.
+  - Đồng bộ tự động: Dữ liệu của từng nhóm được phân tách và lưu trữ độc lập
+    trong bộ nhớ trình duyệt (localStorage) để tránh xung đột dữ liệu giữa các
+    nhóm khác nhau.
+
+--- START OF FILE Paste July 20, 2026 - 8:08AM ---
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -89,7 +103,7 @@
             { id: '5', name: 'Sữa bột ăn dặm cho bé', quantity: '1 hộp', category: 'Sữa & Đồ hộp', compartment: 'Ngăn đồ ăn dặm', storage_location: 'Ngăn đồ ăn dặm', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: true, isCustom: false },
             { id: '6', name: 'Hành tây', quantity: '2 củ', category: 'Rau củ & Trái cây', compartment: 'Ngăn rau củ', storage_location: 'Ngăn rau củ', expiryDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false },
             { id: '7', name: 'Bông cải xanh', quantity: '1 cây', category: 'Rau củ & Trái cây', compartment: 'Ngăn rau củ', storage_location: 'Ngăn rau củ', expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], isPediatricCritical: false, isCustom: false }
-];
+        ];
 
         const monthlyHistoryData = [
             { month: 'Tháng 3', consumed: 72, wasted: 28 },
@@ -381,7 +395,7 @@
                 }
                 if (lower.includes('măng') || lower.includes('nấm') || lower.includes('sen') || lower.includes('mộc nhĩ')) {
                     return [
-                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn với tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
+                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn with tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
                         { name: `Canh sườn heo hầm ${name}`, desc: `Ninh sườn non lấy nước ngọt, cho thêm ${name} hầm chín tới, rắc hành lá và tiêu thơm.` }
                     ];
                 }
@@ -394,7 +408,7 @@
                 return [
                     { 
                         name: `${name} xào tỏi ớt thập cẩm`, 
-                        desc: `Tận dụng các loại rau củ sẵn có trong ngăn mát, xào nhanh tay ${name} trên lửa lớn with tỏi phi thơm để giữ vị giòn dai.` 
+                        desc: `Tận dụng các loại rau củ sẵn có trong ngăn mát, xào nhanh tay ${name} trên lửa lớn với tỏi phi thơm để giữ vị giòn dai.` 
                     },
                     { 
                         name: `Canh súp thanh nhiệt cùng ${name}`, 
@@ -542,7 +556,7 @@
                 }
 
                 if (normalized.includes('quyền') || normalized.includes('chồng') || normalized.includes('vợ') || normalized.includes('chia sẻ')) {
-                    return { success: false, message: 'Fridgy AI 🤖: Hệ thống tủ lạnh của bạn hiện được chia sẻ đồng bộ trực tiếp với Chồng (Bố trẻ nhỏ) và Trần Thu Thảo. Mọi hành động thêm/sửa/xóa của bạn hoặc Admin sẽ cập nhật ngay lập tức đến thiết bị của các thành viên.' };
+                    return { success: false, message: 'Fridgy AI 🤖: Hệ thống tủ lạnh của bạn hiện được chia sẻ đồng bộ trực tiếp với các thành viên trong nhóm. Mọi hành động thêm/sửa/xóa của bạn hoặc Admin sẽ cập nhật ngay lập tức đến thiết bị của các thành viên.' };
                 }
 
                 // 7. XÓA MÓN ĂN (CRUD)
@@ -560,7 +574,7 @@
                     return { success: false, message: `Fridgy AI 🤖: Không tìm thấy thực phẩm nào khớp với tên "${targetName}" để thực hiện xóa.` };
                 }
 
-                // 8. SỬA SỐ LƯỢNG (CRUD)
+                // 8. SỬ SỬA SỐ LƯỢNG (CRUD)
                 if (normalized.startsWith('sửa số lượng') || normalized.startsWith('sửa')) {
                     const updateRegex = /(?:sửa\s+số\s+lượng\s+|sửa\s+)(.+?)\s+thành\s+(.+)$/i;
                     const updateMatch = rawText.match(updateRegex);
@@ -673,11 +687,22 @@
            4. PRESENTATION LAYER: REACT DASHBOARD & CONTROLLER
            ========================================================== */
         function FreshKeepApp() {
-            const [accounts, setAccounts] = useState([
+            // Hàm bổ trợ tải dữ liệu từ localStorage
+            const loadLocalData = (key, defaultValue) => {
+                try {
+                    const saved = localStorage.getItem(key);
+                    return saved ? JSON.parse(saved) : defaultValue;
+                } catch (e) {
+                    console.error("Lỗi khi tải dữ liệu từ localStorage:", e);
+                    return defaultValue;
+                }
+            };
+
+            const [accounts, setAccounts] = useState(() => loadLocalData('freshkeep_accounts', [
                 { email: 'mai.nguyen@gmail.com', password: '123456', name: 'Nguyễn Thị Mai', role: 'Mẹ bỉm sữa', avatar: '👩‍🍼', isAdmin: true },
                 { email: 'thao.tran@gmail.com', password: '123456', name: 'Trần Thu Thảo', role: 'Sinh viên', avatar: '👩‍🎓', isAdmin: false },
                 { email: 'bo.tre@gmail.com', password: '123456', name: 'Bố trẻ nhỏ', role: 'Chồng', avatar: '🙋‍♂️', isAdmin: false }
-            ]);
+            ]));
 
             const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [authMode, setAuthMode] = useState('login');
@@ -695,7 +720,49 @@
             const [userName, setUserName] = useState('Nguyễn Thị Mai');
             const [userRole, setUserRole] = useState('Mẹ bỉm sữa');
 
-            const [items, setItems] = useState(initialFoodItems);
+            /* ==========================================================
+               CẤU CẤU HÌNH NHÓM CHIA SẺ & ĐỒNG BỘ DỮ LIỆU ĐỘNG THEO GROUP ID
+               ========================================================== */
+            const [groupId, setGroupId] = useState(() => {
+                return loadLocalData('freshkeep_current_group_id', 'FK-DEFAULT');
+            });
+
+            const [groupName, setGroupName] = useState(() => {
+                return loadLocalData('freshkeep_current_group_name', 'Căn hộ chung Mai & Thảo');
+            });
+
+            const [myGroups, setMyGroups] = useState(() => {
+                return loadLocalData('freshkeep_my_groups', [
+                    { id: 'FK-DEFAULT', name: 'Căn hộ chung Mai & Thảo' }
+                ]);
+            });
+
+            const [joinInputId, setJoinInputId] = useState('');
+            const [createGroupNameInput, setCreateGroupNameInput] = useState('');
+
+            // Tải dữ liệu riêng biệt cho từng nhóm dựa trên Group ID hiện tại
+            const [items, setItems] = useState(() => {
+                const currentGid = loadLocalData('freshkeep_current_group_id', 'FK-DEFAULT');
+                return loadLocalData(`freshkeep_items_${currentGid}`, initialFoodItems);
+            });
+
+            const [shoppingList, setShoppingList] = useState(() => {
+                const currentGid = loadLocalData('freshkeep_current_group_id', 'FK-DEFAULT');
+                return loadLocalData(`freshkeep_shoppingList_${currentGid}`, [
+                    { id: 's1', name: 'Trứng gà tươi', quantity: '10 quả', category: 'Sữa & Đồ hộp', checked: false },
+                    { id: 's2', name: 'Rau chân vịt', quantity: '2 bó', category: 'Rau củ & Trái cây', checked: false }
+                ]);
+            });
+
+            const [roommates, setRoommates] = useState(() => {
+                const currentGid = loadLocalData('freshkeep_current_group_id', 'FK-DEFAULT');
+                return loadLocalData(`freshkeep_roommates_${currentGid}`, [
+                    { id: 'u1', name: 'Nguyễn Thị Mai', avatar: '👩‍🍼', role: 'Mẹ bỉm sữa', isAdmin: true },
+                    { id: 'u2', name: 'Trần Thu Thảo', avatar: '👩‍🎓', role: 'Sinh viên', isAdmin: false },
+                    { id: 'u3', name: 'Bố trẻ nhỏ', avatar: '🙋‍♂️', role: 'Chồng', isAdmin: false }
+                ]);
+            });
+
             const [searchQuery, setSearchQuery] = useState('');
             const [activeTab, setActiveTab] = useState('storage'); 
             const [activeCompartment, setActiveCompartment] = useState('Tất cả');
@@ -725,21 +792,12 @@
             const [liveActivityToast, setLiveActivityToast] = useState(null);
 
             // Sổ đi chợ
-            const [shoppingList, setShoppingList] = useState([
-                { id: 's1', name: 'Trứng gà tươi', quantity: '10 quả', category: 'Sữa & Đồ hộp', checked: false },
-                { id: 's2', name: 'Rau chân vịt', quantity: '2 bó', category: 'Rau củ & Trái cây', checked: false }
-            ]);
             const [shoppingInput, setShoppingInput] = useState('');
             const [shoppingCategory, setShoppingCategory] = useState('Rau củ & Trái cây');
             const [isScanning, setIsScanning] = useState(false);
             const [scannerCameraSimulation, setScannerCameraSimulation] = useState(false);
 
             // Thành viên Co-living & Đồng bộ dữ liệu
-            const [roommates, setRoommates] = useState([
-                { id: 'u1', name: 'Nguyễn Thị Mai', avatar: '👩‍🍼', role: 'Mẹ bỉm sữa', isAdmin: true },
-                { id: 'u2', name: 'Trần Thu Thảo', avatar: '👩‍🎓', role: 'Sinh viên', isAdmin: false },
-                { id: 'u3', name: 'Bố trẻ nhỏ', avatar: '🙋‍♂️', role: 'Chồng', isAdmin: false }
-            ]);
             const [inviteName, setInviteName] = useState('');
             const [inviteRole, setInviteRole] = useState('Thành viên');
             const [inviteAvatar, setInviteAvatar] = useState('👤');
@@ -767,6 +825,97 @@
             const [newFood, setNewFood] = useState({ name: '', quantity: '', category: 'Thịt & Hải sản', compartment: 'Ngăn mát', expiryDate: '', isPediatricCritical: false, isCustom: false });
             const [healthNotice, setHealthNotice] = useState(null);
 
+            // ĐỒNG BỘ DỰ LIỆU CÁC TÀI KHOẢN VÀ THÀNH VIÊN VÀO LOCALSTORAGE
+            useEffect(() => {
+                localStorage.setItem('freshkeep_accounts', JSON.stringify(accounts));
+            }, [accounts]);
+
+            useEffect(() => {
+                localStorage.setItem('freshkeep_my_groups', JSON.stringify(myGroups));
+            }, [myGroups]);
+
+            // Đồng bộ dữ liệu liên tục tương ứng với Group ID đang làm việc
+            useEffect(() => {
+                localStorage.setItem(`freshkeep_items_${groupId}`, JSON.stringify(items));
+            }, [items, groupId]);
+
+            useEffect(() => {
+                localStorage.setItem(`freshkeep_shoppingList_${groupId}`, JSON.stringify(shoppingList));
+            }, [shoppingList, groupId]);
+
+            useEffect(() => {
+                localStorage.setItem(`freshkeep_roommates_${groupId}`, JSON.stringify(roommates));
+            }, [roommates, groupId]);
+
+            // Theo dõi Metadata tên nhóm để hỗ trợ các thành viên khác gia nhập nhanh
+            useEffect(() => {
+                if (groupId !== 'FK-DEFAULT') {
+                    localStorage.setItem(`freshkeep_group_name_meta_${groupId}`, JSON.stringify(groupName));
+                }
+            }, [groupId, groupName]);
+
+            // Cập nhật cấu hình Group ID khi thay đổi
+            useEffect(() => {
+                localStorage.setItem('freshkeep_current_group_id', JSON.stringify(groupId));
+                localStorage.setItem('freshkeep_current_group_name', JSON.stringify(groupName));
+
+                // Nạp lại toàn bộ dữ liệu mới của nhóm vừa chọn
+                const loadedItems = loadLocalData(`freshkeep_items_${groupId}`, groupId === 'FK-DEFAULT' ? initialFoodItems : []);
+                const loadedShopping = loadLocalData(`freshkeep_shoppingList_${groupId}`, groupId === 'FK-DEFAULT' ? [
+                    { id: 's1', name: 'Trứng gà tươi', quantity: '10 quả', category: 'Sữa & Đồ hộp', checked: false },
+                    { id: 's2', name: 'Rau chân vịt', quantity: '2 bó', category: 'Rau củ & Trái cây', checked: false }
+                ] : []);
+                const loadedRoommates = loadLocalData(`freshkeep_roommates_${groupId}`, groupId === 'FK-DEFAULT' ? [
+                    { id: 'u1', name: 'Nguyễn Thị Mai', avatar: '👩‍🍼', role: 'Mẹ bỉm sữa', isAdmin: true },
+                    { id: 'u2', name: 'Trần Thu Thảo', avatar: '👩‍🎓', role: 'Sinh viên', isAdmin: false },
+                    { id: 'u3', name: 'Bố trẻ nhỏ', avatar: '🙋‍♂️', role: 'Chồng', isAdmin: false }
+                ] : [
+                    { id: 'u_creator', name: userName, avatar: '👤', role: userRole, isAdmin: true }
+                ]);
+
+                setItems(loadedItems);
+                setShoppingList(loadedShopping);
+                setRoommates(loadedRoommates);
+            }, [groupId]);
+
+            // ==========================================================
+            // CƠ CHẾ ĐỒNG BỘ THỜI GIAN THỰC GIỮA CÁC TAB (STORAGE EVENT)
+            // ==========================================================
+            useEffect(() => {
+                const handleStorageEvent = (event) => {
+                    if (!event.newValue) return;
+                    
+                    try {
+                        if (event.key === `freshkeep_items_${groupId}`) {
+                            const updatedItems = JSON.parse(event.newValue);
+                            setItems(updatedItems);
+                            setLiveActivityToast("Đồng bộ: Kho thực phẩm vừa được cập nhật từ thành viên khác.");
+                            setSyncLogs(prev => [
+                                { id: Date.now(), text: `Hệ thống vừa đồng bộ danh sách thực phẩm từ thiết bị/tab khác trong nhóm.`, time: new Date().toLocaleTimeString().substring(0, 5) },
+                                ...prev
+                            ]);
+                        } else if (event.key === `freshkeep_shoppingList_${groupId}`) {
+                            setShoppingList(JSON.parse(event.newValue));
+                            setLiveActivityToast("Đồng bộ: Sổ đi chợ vừa được cập nhật.");
+                        } else if (event.key === `freshkeep_roommates_${groupId}`) {
+                            setRoommates(JSON.parse(event.newValue));
+                            setLiveActivityToast("Đồng bộ: Danh sách thành viên vừa được cập nhật.");
+                        } else if (event.key === 'freshkeep_my_groups') {
+                            setMyGroups(JSON.parse(event.newValue));
+                        } else if (event.key === 'freshkeep_accounts') {
+                            setAccounts(JSON.parse(event.newValue));
+                        }
+                    } catch (e) {
+                        console.error("Lỗi giải mã dữ liệu đồng bộ:", e);
+                    }
+                };
+
+                window.addEventListener('storage', handleStorageEvent);
+                return () => {
+                    window.removeEventListener('storage', handleStorageEvent);
+                };
+            }, [groupId]);
+
             // Danh sách Tab hỗ trợ màn hình Mobile và Desktop
             const tabs = [
                 { id: 'storage', label: '📦 Kho thực phẩm' },
@@ -774,7 +923,7 @@
                 { id: 'smart-kitchen', label: '🍳 Bếp thông minh' },
                 { id: 'shopping-planner', label: '📝 Sổ đi chợ' },
                 { id: 'ai', label: '🤖 Trợ lý AI' },
-                { id: 'sharing-hub', label: '👥 Thành viên & Đồng bộ' },
+                { id: 'sharing-hub', label: '👥 Thành viên & Nhóm' },
                 { id: 'settings', label: '⚙️ Cài đặt & Hệ thống' }
             ];
 
@@ -1043,37 +1192,38 @@
 
             const handleGenerateQrSync = () => {
                 const stateString = JSON.stringify({
+                    groupId: groupId,
+                    groupName: groupName,
                     owner: userName,
-                    itemsCount: items.length,
                     timestamp: Date.now()
                 });
                 const base64Data = btoa(unescape(encodeURIComponent(stateString)));
-                setQrSyncData(`https://freshkeep-sync-hub.io/sync?data=${base64Data}`);
+                setQrSyncData(`https://freshkeep-sync-hub.io/sync?group=${groupId}&data=${base64Data}`);
                 setShowQRModal(true);
             };
 
             const simulateScanningOtherMemberQR = () => {
-                setLiveActivityToast("Đang kết nối qua mã QR...");
+                setLiveActivityToast("Đang quét mã QR liên kết nhóm...");
                 setTimeout(() => {
                     playScanBeep();
-                    const simulatedSharedFood = {
-                        id: Date.now().toString(),
-                        name: "Dưa hấu Long An",
-                        quantity: "1 quả",
-                        category: "Rau củ & Trái cây",
-                        compartment: "Ngăn mát",
-                        expiryDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        isPediatricCritical: false,
-                        isCustom: false
-                    };
-                    setItems(prev => [simulatedSharedFood, ...prev]);
-                    setLiveActivityToast("Đồng bộ hoàn tất! Nhận thêm thực phẩm: Dưa hấu Long An.");
+                    const demoGroupId = 'FK-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+                    const demoGroupName = "Căn hộ " + (userName === "Trần Thu Thảo" ? "Mai Nguyễn" : "Thu Thảo");
+                    
+                    const newGroup = { id: demoGroupId, name: demoGroupName };
+                    setMyGroups(prev => {
+                        if (prev.some(g => g.id === demoGroupId)) return prev;
+                        return [...prev, newGroup];
+                    });
+                    setGroupName(demoGroupName);
+                    setGroupId(demoGroupId);
+                    
+                    setLiveActivityToast(`Đã gia nhập và đồng bộ thành công vào nhóm mới: ${demoGroupName}`);
                     setShowQRModal(false);
                 }, 1500);
             };
 
             const triggerMockMarketSync = () => {
-                setLiveActivityToast("Đang lắng nghe tín hiệu từ máy chủ gia đình...");
+                setLiveActivityToast("Đang kết nối cổng tín hiệu nhóm từ xa...");
                 setTimeout(() => {
                     const simulatedFood = {
                         id: Date.now().toString(),
@@ -1086,9 +1236,9 @@
                         isCustom: false
                     };
                     setItems(prev => [simulatedFood, ...prev]);
-                    setLiveActivityToast(`Đã đồng bộ cam sành Hàm Yên do Bố trẻ nhỏ xếp vào từ xa.`);
+                    setLiveActivityToast(`Đã đồng bộ cam sành Hàm Yên do thành viên cùng nhóm xếp vào.`);
                     setSyncLogs(prev => [
-                        { id: Date.now(), text: `Bố trẻ nhỏ đã xếp "Cam sành Hàm Yên" vào Ngăn rau củ từ xa.`, time: new Date().toLocaleTimeString().substring(0, 5) },
+                        { id: Date.now(), text: `Thành viên nhóm đã xếp "Cam sành Hàm Yên" vào Ngăn rau củ từ xa.`, time: new Date().toLocaleTimeString().substring(0, 5) },
                         ...prev
                     ]);
                 }, 1000);
@@ -1159,9 +1309,61 @@
             };
 
             /* ==========================================================
+               XỬ LÝ LƯU TRỮ VÀ GIA NHẬP NHÓM CHIA SẺ
+               ========================================================== */
+            const handleCreateGroup = (e) => {
+                e.preventDefault();
+                if (!createGroupNameInput.trim()) return;
+
+                const newGid = 'FK-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+                const newGroupObj = { id: newGid, name: createGroupNameInput.trim() };
+
+                setMyGroups(prev => [...prev, newGroupObj]);
+                setGroupName(newGroupObj.name);
+                setGroupId(newGid);
+                setCreateGroupNameInput('');
+                setLiveActivityToast(`Đã thiết lập nhóm mới: "${newGroupObj.name}"`);
+            };
+
+            const handleJoinGroup = (e) => {
+                e.preventDefault();
+                const codeToJoin = joinInputId.trim().toUpperCase();
+                if (!codeToJoin) return;
+
+                if (!codeToJoin.startsWith('FK-')) {
+                    triggerNotification("🔒 Mã nhóm lỗi", "Mã liên kết nhóm của FreshKeep bắt buộc bắt đầu bằng ký tự 'FK-'.");
+                    return;
+                }
+
+                const alreadyJoined = myGroups.find(g => g.id === codeToJoin);
+                if (alreadyJoined) {
+                    setGroupId(codeToJoin);
+                    setGroupName(alreadyJoined.name);
+                    setJoinInputId('');
+                    setLiveActivityToast(`Đã chuyển hướng làm việc sang nhóm "${alreadyJoined.name}".`);
+                    return;
+                }
+
+                // Nhập tên giả định nếu không tìm thấy dữ liệu nhóm lưu trong máy chủ nội bộ
+                let resolvedName = `Nhóm liên kết ${codeToJoin}`;
+                try {
+                    const storedMetaName = localStorage.getItem(`freshkeep_group_name_meta_${codeToJoin}`);
+                    if (storedMetaName) {
+                        resolvedName = JSON.parse(storedMetaName);
+                    }
+                } catch(e) {}
+
+                const newGroupObj = { id: codeToJoin, name: resolvedName };
+                setMyGroups(prev => [...prev, newGroupObj]);
+                setGroupName(newGroupObj.name);
+                setGroupId(codeToJoin);
+                setJoinInputId('');
+                setLiveActivityToast(`Gia nhập thành công nhóm dữ liệu: "${resolvedName}"`);
+            };
+
+            /* ==========================================================
                XỬ LÝ ĐĂNG NHẬP VÀ ĐĂNG KÝ (VALIDATION ENGINE)
                ========================================================== */
-            
             const handleLoginSubmit = (e) => {
                 e.preventDefault();
                 setAuthError('');
@@ -1256,7 +1458,6 @@
             /* ==========================================================
                CÁC CHỨC NĂNG QUẢN TRỊ ADMIN (THÀNH VIÊN)
                ========================================================== */
-            
             const handleAddMember = (e) => {
                 e.preventDefault();
                 if (!currentUserIsAdmin) {
@@ -1386,7 +1587,6 @@
             /* ==========================================================
                BỔ SUNG CÁC HÀM XỬ LÝ SỰ KIỆN LOGIC KHÁC
                ========================================================== */
-
             const handleAddManualItem = (e) => {
                 e.preventDefault();
                 if (!newFood.name.trim()) return;
@@ -1448,7 +1648,7 @@
                 if (!cmdText.trim()) return;
                 const userMsg = { sender: 'user', text: cmdText };
                 setChatHistory(prev => [...prev, userMsg]);
-                setChatInput(''); // Xóa nội dung ô nhập
+                setChatInput(''); 
                 
                 setTimeout(() => {
                     const res = FridgyParser.parseInstruction(cmdText, items);
@@ -1859,7 +2059,7 @@
                             </div>
                             
                             <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
-                                <span className="text-xs font-bold text-stone-500">Tài khoản hiện tại:</span>
+                                <span className="text-xs font-bold text-stone-500">Tài khoản:</span>
                                 <select 
                                     value={userName} 
                                     onChange={(e) => handleUserChange(e.target.value)}
@@ -1869,6 +2069,11 @@
                                         <option key={r.id} value={r.name}>{r.name} ({r.role}){r.isAdmin ? ' ★ Admin' : ''}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
+                                <span className="text-xs font-bold text-stone-500 font-sans">Liên kết:</span>
+                                <span className="text-xs font-black text-amber-600">{groupName}</span>
                             </div>
 
                             <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
@@ -2196,7 +2401,7 @@
                                                         { name: 'Sữa tươi ít đường', category: 'Sữa & Đồ hộp' }
                                                     ].map((rec, i) => (
                                                         <button 
-                                                            key={i}
+                                                            key={i} 
                                                             onClick={() => handleAddShoppingItem(rec.name, rec.category, '1 phần')}
                                                             className="w-full text-left bg-white hover:bg-amber-50 border border-stone-100 p-2.5 rounded-xl text-[10px] font-bold text-stone-700 transition flex justify-between items-center font-sans"
                                                         >
@@ -2325,233 +2530,322 @@
 
                                 {/* TAB 5: CONNECTIVITY & CO-LIVING FAMILY HUB */}
                                 {activeTab === 'sharing-hub' && (
-                                    <div className="flex-1 flex flex-col lg:flex-row gap-6 animate-fade-in font-sans">
+                                    <div className="flex-1 flex flex-col gap-6 animate-fade-in font-sans">
                                         
-                                        {/* DANH SÁCH THÀNH VIÊN VÀ QUẢN TRỊ VIÊN */}
-                                        <div className="flex-1 space-y-4">
-                                            <div className="flex justify-between items-center border-b border-stone-100 pb-2">
-                                                <h4 className="text-xs font-black text-stone-700 uppercase tracking-widest">
-                                                    👥 THÀNH VIÊN TRONG CĂN HỘ (CO-LIVING)
-                                                </h4>
-                                                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${currentUserIsAdmin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-stone-100 text-stone-400'}`}>
-                                                    {currentUserIsAdmin ? "Quyền hạn: ADMIN 👑" : "Quyền hạn: Xem & Ghi nhận 👥"}
-                                                </span>
-                                            </div>
-
-                                            {/* Grid Danh sách thành viên */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                {roommates.map((r) => (
-                                                    <div key={r.id} className="bg-white border border-stone-200 text-xs font-bold p-3.5 rounded-2xl flex flex-col justify-between text-stone-700 shadow-xs relative transition-all hover:shadow-md">
-                                                        
-                                                        {editingMemberId === r.id ? (
-                                                            /* MÀN HÌNH CHỈNH SỬA CHO ADMIN */
-                                                            <div className="space-y-2">
-                                                                <div>
-                                                                    <label className="text-[9px] text-stone-400 uppercase font-black">Emoji đại diện</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={editForm.avatar} 
-                                                                        onChange={(e) => setEditForm({...editForm, avatar: e.target.value})} 
-                                                                        className="w-full border border-stone-200 rounded-lg p-1 text-center font-bold"
-                                                                        maxLength={2}
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[9px] text-stone-400 uppercase font-black">Tên thành viên</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={editForm.name} 
-                                                                        onChange={(e) => setEditForm({...editForm, name: e.target.value})} 
-                                                                        className="w-full border border-stone-200 rounded-lg p-1.5 font-bold focus:outline-none"
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-[9px] text-stone-400 uppercase font-black">Vai trò (Chức danh)</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={editForm.role} 
-                                                                        onChange={(e) => setEditForm({...editForm, role: e.target.value})} 
-                                                                        className="w-full border border-stone-200 rounded-lg p-1.5 font-bold focus:outline-none"
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-2 py-1">
-                                                                    <input 
-                                                                        type="checkbox" 
-                                                                        id={`edit_admin_${r.id}`}
-                                                                        checked={editForm.isAdmin} 
-                                                                        disabled={r.name === userName} 
-                                                                        onChange={(e) => setEditForm({...editForm, isAdmin: e.target.checked})}
-                                                                        className="w-4 h-4 accent-amber-500"
-                                                                    />
-                                                                    <label htmlFor={`edit_admin_${r.id}`} className="text-[10px] text-stone-600 font-extrabold cursor-pointer">Cấp quyền Quản trị (Admin)</label>
-                                                                </div>
-                                                                <div className="flex gap-1.5 pt-2">
-                                                                    <button 
-                                                                        onClick={() => handleSaveEditMember(r.id)}
-                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1.5 rounded-lg flex-1 font-sans"
-                                                                    >
-                                                                        Lưu
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => setEditingMemberId(null)}
-                                                                        className="bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] px-2.5 py-1.5 rounded-lg flex-1 font-sans"
-                                                                    >
-                                                                        Hủy
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            /* CHẾ ĐỘ HIỂN THỊ CHUẨN */
-                                                            <>
-                                                                <div className="flex items-start gap-3 justify-between">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className="text-3xl bg-stone-50 p-1.5 rounded-xl border border-stone-100">{r.avatar}</span>
-                                                                        <div>
-                                                                            <p className="text-xs font-black text-stone-800 flex items-center gap-1.5">
-                                                                                {r.name}
-                                                                                {r.name === userName && <span className="bg-stone-100 text-stone-500 text-[8px] px-1.5 rounded font-normal">Tôi</span>}
-                                                                            </p>
-                                                                            <p className="text-[9px] text-stone-400 font-extrabold">{r.role}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    {r.isAdmin && (
-                                                                        <span className="text-[8px] bg-amber-500/10 border border-amber-500/20 text-amber-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                                                                            ADMIN
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Các nút bấm điều khiển cho Quản trị viên */}
-                                                                {currentUserIsAdmin && (
-                                                                    <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-1.5">
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <button
-                                                                                onClick={() => handleStartEditMember(r)}
-                                                                                className="text-stone-500 hover:text-amber-600 text-[10px] font-extrabold flex items-center gap-0.5 font-sans"
-                                                                            >
-                                                                                ⚙️ Sửa
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => handleDeleteMember(r.id)}
-                                                                                className={`text-[10px] font-extrabold flex items-center gap-0.5 font-sans ${r.name === userName ? 'text-stone-300 cursor-not-allowed' : 'text-stone-500 hover:text-red-600'}`}
-                                                                                disabled={r.name === userName}
-                                                                            >
-                                                                                🗑️ Xóa
-                                                                            </button>
-                                                                        </div>
-                                                                        
-                                                                        {/* Trao nhanh quyền Admin */}
-                                                                        <button
-                                                                            onClick={() => handleToggleAdminPermission(r.id)}
-                                                                            disabled={r.name === userName}
-                                                                            className={`text-[8px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-md transition-all font-sans ${
-                                                                                r.isAdmin 
-                                                                                ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200' 
-                                                                                : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300'
-                                                                            } ${r.name === userName ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                                                        >
-                                                                            {r.isAdmin ? 'Hạ quyền Admin' : 'Trao quyền Admin'}
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        )}
+                                        {/* ==========================================================
+                                           KHU VỰC QUẢN LÝ NHÓM & LIÊN KẾT CHIA SẺ (NEW FEATURE)
+                                           ========================================================== */}
+                                        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border-2 border-amber-200/50 p-5 rounded-3xl">
+                                            <h4 className="text-xs font-black text-amber-950 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                                <span>🔗</span> CẤU HÌNH NHÓM CHIA SẺ THỰC PHẨM
+                                            </h4>
+                                            <p className="text-[10px] text-stone-500 leading-relaxed font-semibold mb-4">
+                                                Tạo nhóm mới hoặc gia nhập bằng mã liên kết để sử dụng chung một cơ sở dữ liệu tủ lạnh (gồm Kho thực phẩm, Sổ đi chợ, Thành viên).
+                                            </p>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Nhóm đang hoạt động */}
+                                                <div className="space-y-3 bg-white p-4 rounded-2xl border border-stone-200/60 shadow-sm">
+                                                    <p className="text-[10px] text-stone-400 font-extrabold uppercase">Nhóm đang làm việc</p>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="text-xs font-black text-amber-950 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                                                            {groupName} ({groupId})
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(groupId);
+                                                                setLiveActivityToast("Đã sao chép ID nhóm để chia sẻ!");
+                                                            }}
+                                                            className="bg-stone-950 hover:bg-stone-800 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl shadow-xs transition"
+                                                        >
+                                                            📋 Sao chép ID
+                                                        </button>
                                                     </div>
-                                                ))}
-                                            </div>
 
-                                            {/* TRÌNH THÊM THÀNH VIÊN MỚI (CHỈ ADMIN THẤY) */}
-                                            {currentUserIsAdmin ? (
-                                                <form onSubmit={handleAddMember} className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/50 mt-4 space-y-3">
-                                                    <h5 className="text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                                                        <span>👑</span> Thêm thành viên mới vào hệ thống
-                                                    </h5>
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="Họ và tên..." 
-                                                            value={inviteName}
-                                                            onChange={(e) => setInviteName(e.target.value)}
-                                                            className="border border-amber-200/50 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white"
-                                                            required
-                                                        />
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="Vai trò (Ví dụ: Chồng, Chị gái...)" 
-                                                            value={inviteRole}
-                                                            onChange={(e) => setInviteRole(e.target.value)}
-                                                            className="border border-amber-200/50 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white"
-                                                        />
-                                                        <div className="flex gap-2">
-                                                            <select
-                                                                value={inviteAvatar}
-                                                                onChange={(e) => setInviteAvatar(e.target.value)}
-                                                                className="border border-amber-200/50 rounded-xl px-2 py-2 text-xs text-stone-700 bg-white font-bold flex-1"
-                                                            >
-                                                                <option value="👤">👤 Avatar mặc định</option>
-                                                                <option value="👩‍🍼">👩‍🍼 Mẹ bỉm sữa</option>
-                                                                <option value="🙋‍♂️">🙋‍♂️ Nam thanh niên</option>
-                                                                <option value="👩‍🎓">👩‍🎓 Nữ sinh viên</option>
-                                                                <option value="🧓">🧓 Người lớn tuổi</option>
-                                                                <option value="👧">👧 Bé gái</option>
-                                                                <option value="🧒">🧒 Bé trai</option>
-                                                            </select>
-                                                            
-                                                            <div className="flex items-center gap-1 px-2 border border-amber-200/50 rounded-xl bg-white">
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    id="inviteAdminChk"
-                                                                    checked={inviteIsAdmin}
-                                                                    onChange={(e) => setInviteIsAdmin(e.target.checked)}
-                                                                    className="w-3.5 h-3.5 accent-amber-500 cursor-pointer"
-                                                                />
-                                                                <label htmlFor="inviteAdminChk" className="text-[10px] text-stone-500 font-extrabold whitespace-nowrap cursor-pointer font-sans">Admin</label>
-                                                            </div>
-                                                        </div>
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                        <span className="text-[10px] text-stone-500 font-bold">Chuyển đổi nhóm:</span>
+                                                        <select
+                                                            value={groupId}
+                                                            onChange={(e) => {
+                                                                const target = myGroups.find(g => g.id === e.target.value);
+                                                                if (target) {
+                                                                    setGroupId(target.id);
+                                                                    setGroupName(target.name);
+                                                                }
+                                                            }}
+                                                            className="bg-stone-50 border border-stone-200 rounded-lg text-xs font-extrabold px-2 py-1 focus:outline-none cursor-pointer"
+                                                        >
+                                                            {myGroups.map(g => (
+                                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
-                                                    <button 
-                                                        type="submit"
-                                                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2 rounded-xl text-xs transition-all shadow-sm font-sans"
-                                                    >
-                                                        Thêm thành viên & Gửi thông báo
-                                                    </button>
-                                                </form>
-                                            ) : (
-                                                <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-center font-sans">
-                                                    <p className="text-[10px] font-bold text-stone-500 leading-relaxed">
-                                                        🔒 Tính năng Thêm / Sửa / Xóa và cấu hình phân quyền thành viên đã được khóa. Vui lòng chuyển sang tài khoản có quyền **Admin (Nguyễn Thị Mai)** ở góc trên để quản trị hệ thống.
-                                                    </p>
                                                 </div>
-                                            )}
 
-                                            {/* Sự kiện đồng bộ giả lập */}
-                                            <div className="mt-5 p-4 bg-teal-50/50 border border-teal-200 rounded-2xl">
-                                                <h5 className="text-[11px] font-black text-teal-900 uppercase mb-2 flex items-center gap-1.5 font-sans">
-                                                    <span>🔄</span> MÔ PHỎNG ĐỒNG BỘ DỮ LIỆU THỜI GIAN THỰC
-                                                </h5>
-                                                <p className="text-[10px] text-teal-800 leading-relaxed font-semibold mb-3 font-sans">
-                                                    Giả lập hoạt động của một thành viên khác xếp đồ mới vào tủ chung từ xa để kiểm tra cơ chế cập nhật:
-                                                </p>
-                                                <button 
-                                                    onClick={triggerMockMarketSync}
-                                                    className="bg-teal-600 hover:bg-teal-700 text-white font-black px-4 py-2 rounded-xl text-xs transition font-sans"
-                                                >
-                                                    ⚡ Mô phỏng cập nhật từ xa
-                                                </button>
+                                                {/* Hành động tạo hoặc gia nhập */}
+                                                <div className="space-y-3">
+                                                    <form onSubmit={handleJoinGroup} className="space-y-1.5">
+                                                        <label className="block text-[10px] font-bold text-stone-400 uppercase">Gia nhập nhóm bằng ID</label>
+                                                        <div className="flex gap-2">
+                                                            <input 
+                                                                type="text"
+                                                                placeholder="Mã nhóm (Ví dụ: FK-A9B8C)"
+                                                                value={joinInputId}
+                                                                onChange={(e) => setJoinInputId(e.target.value)}
+                                                                className="border border-stone-200 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white flex-1"
+                                                            />
+                                                            <button type="submit" className="bg-stone-900 hover:bg-stone-800 text-white font-extrabold text-[11px] px-4 rounded-xl shadow-xs transition">
+                                                                Gia nhập
+                                                            </button>
+                                                        </div>
+                                                    </form>
+
+                                                    <form onSubmit={handleCreateGroup} className="space-y-1.5">
+                                                        <label className="block text-[10px] font-bold text-stone-400 uppercase">Tạo nhóm chia sẻ mới</label>
+                                                        <div className="flex gap-2">
+                                                            <input 
+                                                                type="text"
+                                                                placeholder="Tên nhóm mới (Ví dụ: Nhà trọ Thảo)"
+                                                                value={createGroupNameInput}
+                                                                onChange={(e) => setCreateGroupNameInput(e.target.value)}
+                                                                className="border border-stone-200 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white flex-1"
+                                                            />
+                                                            <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[11px] px-4 rounded-xl shadow-xs transition">
+                                                                Tạo mới
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Nhật ký hệ thống */}
-                                        <div className="w-full lg:w-80 bg-stone-50 p-4 rounded-2xl border border-stone-200/50">
-                                            <h5 className="text-[10px] font-black text-stone-600 uppercase tracking-widest mb-3 font-sans">
-                                                📋 NHẬT KÝ HOẠT ĐỘNG
-                                            </h5>
-                                            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                                                {syncLogs.map(log => (
-                                                    <div key={log.id} className="text-[10px] text-stone-600 border-l-2 border-amber-400 pl-2 py-0.5 leading-relaxed font-semibold font-sans">
-                                                        <span className="text-stone-400 font-normal mr-1">[{log.time}]</span> {log.text}
+                                        <div className="flex flex-col lg:flex-row gap-6 w-full">
+                                            {/* DANH SÁCH THÀNH VIÊN VÀ QUẢN TRỊ VIÊN */}
+                                            <div className="flex-1 space-y-4">
+                                                <div className="flex justify-between items-center border-b border-stone-100 pb-2">
+                                                    <h4 className="text-xs font-black text-stone-700 uppercase tracking-widest">
+                                                        👥 THÀNH VIÊN TRONG CĂN HỘ (CO-LIVING)
+                                                    </h4>
+                                                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${currentUserIsAdmin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-stone-100 text-stone-400'}`}>
+                                                        {currentUserIsAdmin ? "Quyền hạn: ADMIN 👑" : "Quyền hạn: Xem & Ghi nhận 👥"}
+                                                    </span>
+                                                </div>
+
+                                                {/* Grid Danh sách thành viên */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {roommates.map((r) => (
+                                                        <div key={r.id} className="bg-white border border-stone-200 text-xs font-bold p-3.5 rounded-2xl flex flex-col justify-between text-stone-700 shadow-xs relative transition-all hover:shadow-md">
+                                                            
+                                                            {editingMemberId === r.id ? (
+                                                                /* MÀN HÌNH CHỈNH SỬA CHO ADMIN */
+                                                                <div className="space-y-2">
+                                                                    <div>
+                                                                        <label className="text-[9px] text-stone-400 uppercase font-black">Emoji đại diện</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={editForm.avatar} 
+                                                                            onChange={(e) => setEditForm({...editForm, avatar: e.target.value})} 
+                                                                            className="w-full border border-stone-200 rounded-lg p-1 text-center font-bold"
+                                                                            maxLength={2}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[9px] text-stone-400 uppercase font-black">Tên thành viên</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={editForm.name} 
+                                                                            onChange={(e) => setEditForm({...editForm, name: e.target.value})} 
+                                                                            className="w-full border border-stone-200 rounded-lg p-1.5 font-bold focus:outline-none"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[9px] text-stone-400 uppercase font-black">Vai trò (Chức danh)</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={editForm.role} 
+                                                                            onChange={(e) => setEditForm({...editForm, role: e.target.value})} 
+                                                                            className="w-full border border-stone-200 rounded-lg p-1.5 font-bold focus:outline-none"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 py-1">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            id={`edit_admin_${r.id}`}
+                                                                            checked={editForm.isAdmin} 
+                                                                            disabled={r.name === userName} 
+                                                                            onChange={(e) => setEditForm({...editForm, isAdmin: e.target.checked})}
+                                                                            className="w-4 h-4 accent-amber-500"
+                                                                        />
+                                                                        <label htmlFor={`edit_admin_${r.id}`} className="text-[10px] text-stone-600 font-extrabold cursor-pointer">Cấp quyền Quản trị (Admin)</label>
+                                                                    </div>
+                                                                    <div className="flex gap-1.5 pt-2">
+                                                                        <button 
+                                                                            onClick={() => handleSaveEditMember(r.id)}
+                                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1.5 rounded-lg flex-1 font-sans"
+                                                                        >
+                                                                            Lưu
+                                                                        </button>
+                                                                        <button 
+                                                                            onClick={() => setEditingMemberId(null)}
+                                                                            className="bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] px-2.5 py-1.5 rounded-lg flex-1 font-sans"
+                                                                        >
+                                                                            Hủy
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                /* CHẾ ĐỘ HIỂN THỊ CHUẨN */
+                                                                <>
+                                                                    <div className="flex items-start gap-3 justify-between">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-3xl bg-stone-50 p-1.5 rounded-xl border border-stone-100">{r.avatar}</span>
+                                                                            <div>
+                                                                                <p className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                                                                                    {r.name}
+                                                                                    {r.name === userName && <span className="bg-stone-100 text-stone-500 text-[8px] px-1.5 rounded font-normal">Tôi</span>}
+                                                                                </p>
+                                                                                <p className="text-[9px] text-stone-400 font-extrabold">{r.role}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        {r.isAdmin && (
+                                                                            <span className="text-[8px] bg-amber-500/10 border border-amber-500/20 text-amber-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                                                                ADMIN
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Các nút bấm điều khiển cho Quản trị viên */}
+                                                                    {currentUserIsAdmin && (
+                                                                        <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-1.5">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <button
+                                                                                    onClick={() => handleStartEditMember(r)}
+                                                                                    className="text-stone-500 hover:text-amber-600 text-[10px] font-extrabold flex items-center gap-0.5 font-sans"
+                                                                                >
+                                                                                    ⚙️ Sửa
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleDeleteMember(r.id)}
+                                                                                    className={`text-[10px] font-extrabold flex items-center gap-0.5 font-sans ${r.name === userName ? 'text-stone-300 cursor-not-allowed' : 'text-stone-500 hover:text-red-600'}`}
+                                                                                    disabled={r.name === userName}
+                                                                                >
+                                                                                    🗑️ Xóa
+                                                                                </button>
+                                                                            </div>
+                                                                            
+                                                                            {/* Trao nhanh quyền Admin */}
+                                                                            <button
+                                                                                onClick={() => handleToggleAdminPermission(r.id)}
+                                                                                disabled={r.name === userName}
+                                                                                className={`text-[8px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-md transition-all font-sans ${
+                                                                                    r.isAdmin 
+                                                                                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200' 
+                                                                                    : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300'
+                                                                                } ${r.name === userName ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                                                            >
+                                                                                {r.isAdmin ? 'Hạ quyền Admin' : 'Trao quyền Admin'}
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* TRÌNH THÊM THÀNH VIÊN MỚI (CHỈ ADMIN THẤY) */}
+                                                {currentUserIsAdmin ? (
+                                                    <form onSubmit={handleAddMember} className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/50 mt-4 space-y-3">
+                                                        <h5 className="text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                                                            <span>👑</span> Thêm thành viên mới vào nhóm
+                                                        </h5>
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Họ và tên..." 
+                                                                value={inviteName}
+                                                                onChange={(e) => setInviteName(e.target.value)}
+                                                                className="border border-amber-200/50 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white"
+                                                                required
+                                                            />
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Vai trò (Ví dụ: Chồng, Chị gái...)" 
+                                                                value={inviteRole}
+                                                                onChange={(e) => setInviteRole(e.target.value)}
+                                                                className="border border-amber-200/50 rounded-xl px-3 py-2 text-xs focus:outline-none text-stone-700 font-bold bg-white"
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <select
+                                                                    value={inviteAvatar}
+                                                                    onChange={(e) => setInviteAvatar(e.target.value)}
+                                                                    className="border border-amber-200/50 rounded-xl px-2 py-2 text-xs text-stone-700 bg-white font-bold flex-1"
+                                                                >
+                                                                    <option value="👤">👤 Avatar mặc định</option>
+                                                                    <option value="👩‍🍼">👩‍🍼 Mẹ bỉm sữa</option>
+                                                                    <option value="🙋‍♂️">🙋‍♂️ Nam thanh niên</option>
+                                                                    <option value="👩‍🎓">👩‍🎓 Nữ sinh viên</option>
+                                                                    <option value="🧓">🧓 Người lớn tuổi</option>
+                                                                    <option value="👧">👧 Bé gái</option>
+                                                                    <option value="🧒">🧒 Bé trai</option>
+                                                                </select>
+                                                                
+                                                                <div className="flex items-center gap-1 px-2 border border-amber-200/50 rounded-xl bg-white">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        id="inviteAdminChk"
+                                                                        checked={inviteIsAdmin}
+                                                                        onChange={(e) => setInviteIsAdmin(e.target.checked)}
+                                                                        className="w-3.5 h-3.5 accent-amber-500 cursor-pointer"
+                                                                    />
+                                                                    <label htmlFor="inviteAdminChk" className="text-[10px] text-stone-500 font-extrabold whitespace-nowrap cursor-pointer font-sans">Admin</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            type="submit"
+                                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2 rounded-xl text-xs transition-all shadow-sm font-sans"
+                                                        >
+                                                            Thêm thành viên & Gửi thông báo
+                                                        </button>
+                                                    </form>
+                                                ) : (
+                                                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-center font-sans">
+                                                        <p className="text-[10px] font-bold text-stone-500 leading-relaxed">
+                                                            🔒 Tính năng quản trị thành viên đã bị khóa. Vui lòng chuyển đổi sang tài khoản Admin để có quyền thực thi.
+                                                        </p>
                                                     </div>
-                                                ))}
+                                                )}
+
+                                                {/* Sự kiện đồng bộ giả lập */}
+                                                <div className="mt-5 p-4 bg-teal-50/50 border border-teal-200 rounded-2xl">
+                                                    <h5 className="text-[11px] font-black text-teal-900 uppercase mb-2 flex items-center gap-1.5 font-sans">
+                                                        <span>🔄</span> MÔ PHỎNG ĐỒNG BỘ DỮ LIỆU THỜI GIAN THỰC
+                                                    </h5>
+                                                    <p className="text-[10px] text-teal-800 leading-relaxed font-semibold mb-3 font-sans">
+                                                        Giả lập hoạt động của một thành viên khác trong cùng nhóm xếp đồ mới vào tủ chung từ xa để kiểm tra cơ chế cập nhật:
+                                                    </p>
+                                                    <button 
+                                                        onClick={triggerMockMarketSync}
+                                                        className="bg-teal-600 hover:bg-teal-700 text-white font-black px-4 py-2 rounded-xl text-xs transition font-sans"
+                                                    >
+                                                        ⚡ Mô phỏng cập nhật từ xa
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Nhật ký hệ thống */}
+                                            <div className="w-full lg:w-80 bg-stone-50 p-4 rounded-2xl border border-stone-200/50">
+                                                <h5 className="text-[10px] font-black text-stone-600 uppercase tracking-widest mb-3 font-sans">
+                                                    📋 NHẬT KÝ HOẠT ĐỘNG
+                                                </h5>
+                                                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                                                    {syncLogs.map(log => (
+                                                        <div key={log.id} className="text-[10px] text-stone-600 border-l-2 border-amber-400 pl-2 py-0.5 leading-relaxed font-semibold font-sans">
+                                                            <span className="text-stone-400 font-normal mr-1">[{log.time}]</span> {log.text}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2566,7 +2860,7 @@
                                             <div className="space-y-6">
                                                 <div className="bg-stone-50/60 p-5 rounded-3xl border border-stone-200/60 shadow-sm space-y-4">
                                                     <h4 className="font-extrabold text-xs text-amber-950 uppercase tracking-widest flex items-center gap-2">
-                                                        <span>📊</span> Thống kê tiêu thụ & hao hụt
+                                                        <span>📊</span> Thống kê tiêu thụ & lãng phí
                                                     </h4>
                                                     
                                                     <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-inner">
@@ -2946,9 +3240,9 @@
                                 </button>
                                 
                                 <span className="text-4xl block mb-2">🔗</span>
-                                <h3 className="font-extrabold text-stone-900 text-lg font-sans">Đồng bộ Tủ lạnh phòng chung</h3>
+                                <h3 className="font-extrabold text-stone-900 text-lg font-sans">Liên kết nhóm tủ lạnh</h3>
                                 <p className="text-stone-500 text-[11px] mt-1 leading-relaxed px-4 font-sans">
-                                    Quét mã QR bằng điện thoại của thành viên khác để tự động kết nối và đồng bộ hóa danh sách thực phẩm theo thời gian thực.
+                                    Quét mã QR bằng thiết bị của thành viên khác để tự động liên kết và đồng bộ hóa cơ sở dữ liệu nhóm '{groupName}' ({groupId}) theo thời gian thực.
                                 </p>
 
                                 <div className="my-6 flex justify-center">
@@ -2966,17 +3260,17 @@
                                         onClick={simulateScanningOtherMemberQR}
                                         className="w-full bg-stone-900 hover:bg-stone-800 text-white font-extrabold py-3 rounded-2xl text-xs transition shadow-md font-sans"
                                     >
-                                        📲 Thử quét mã QR của thành viên khác
+                                        📲 Thử quét mã QR của nhóm khác
                                     </button>
                                     
                                     <button 
                                         onClick={() => {
-                                            navigator.clipboard.writeText(qrSyncData);
-                                            setLiveActivityToast("Đã sao chép liên kết đồng bộ.");
+                                            navigator.clipboard.writeText(groupId);
+                                            setLiveActivityToast("Đã sao chép mã liên kết nhóm.");
                                         }}
                                         className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2 rounded-xl text-xs transition font-sans"
                                     >
-                                        Sao chép đường dẫn đồng bộ
+                                        Sao chép mã ID nhóm ({groupId})
                                     </button>
                                 </div>
                             </div>
@@ -2991,7 +3285,7 @@
                                     <span className="text-4xl block mb-2">🧐</span>
                                     <h3 className="font-black text-lg text-stone-900 font-sans">Phát Hiện Nguyên Liệu Lạ!</h3>
                                     <p className="text-[11px] text-stone-500 leading-relaxed mt-1 font-sans">
-                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc danh mục chuẩn. Vui lòng định hình phương án bảo quản:
+                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc danh mục chuẩn. Vui lòng định hình phương án bảo quan:
                                     </p>
                                 </div>
                                 <div className="space-y-4 font-sans">
