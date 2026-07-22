@@ -12,6 +12,12 @@
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
     
+    <!-- Html5-QRCode Library for Real Camera Scanning -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <!-- EmailJS SDK for Direct Gmail Notifications -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
         body {
@@ -76,7 +82,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
 
         /* ==========================================================
            1. DATA LAYER: DANH MỤC CHUẨN & DỮ LIỆU BAN ĐẦU (MOCK DB)
@@ -369,7 +375,7 @@
                 
                 if (lower.includes('đông trùng') || lower.includes('linh chi') || lower.includes('sâm') || lower.includes('thảo dược')) {
                     return [
-                        { name: `Canh gà ta hầm sâm bổ lượng & ${name}`, desc: `Hầm gà cùng ${name}, hạt sen, táo đỏ và kỳ tử trong 1.5 giờ. Thích hợp bồi bổ sức khỏe cho gia đình.` },
+                        { name: `Canh gà ta hầm sâm bổ lượng & ${name}`, desc: `Hầm gà cùng ${name}, hạt sen, táo đỏ và kỳ tử trong 1.5 giờ. Thích hợp bồi bổ sức khỏe cho gia dịch.` },
                         { name: `Trà thảo mộc dưỡng nhan từ ${name}`, desc: `Hãm lát ${name} với nước sôi 85°C kèm kỷ tử và một chút đường phèn thanh mát.` }
                     ];
                 }
@@ -381,14 +387,14 @@
                 }
                 if (lower.includes('măng') || lower.includes('nấm') || lower.includes('sen') || lower.includes('mộc nhĩ')) {
                     return [
-                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn with tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
+                        { name: `${name} xào tỏi dầu hào chay`, desc: `Xào nhanh tay ${name} trên lửa lớn với tỏi băm và dầu hào để giữ độ giòn ngọt tự nhiên.` },
                         { name: `Canh sườn heo hầm ${name}`, desc: `Ninh sườn non lấy nước ngọt, cho thêm ${name} hầm chín tới, rắc hành lá và tiêu thơm.` }
                     ];
                 }
                 if (lower.includes('phô mai') || lower.includes('bơ') || lower.includes('sốt')) {
                     return [
                         { name: `Bánh mì nướng sốt ${name}`, desc: `Phết một lớp ${name} mỏng lên bánh mì, thêm một chút trứng hoặc xúc xích rồi nướng giòn.` },
-                        { name: `Mì Ý sốt kem béo ngậy với ${name}`, desc: `Luộc mì Ý gia vừa chín, đảo đều cùng sốt kem, tỏi băm và lớp ${name} tan chảy mịn màng.` }
+                        { name: `Mì Ý sốt kem béo ngậy với ${name}`, desc: `Luộc mì Ý vừa chín, đảo đều cùng sốt kem, tỏi băm và lớp ${name} tan chảy mịn màng.` }
                     ];
                 }
                 return [
@@ -673,6 +679,9 @@
            4. PRESENTATION LAYER: REACT DASHBOARD & CONTROLLER
            ========================================================== */
         function FreshKeepApp() {
+            // Camera scanner reference
+            const html5QrCodeRef = useRef(null);
+
             // Hàm bổ trợ tải dữ liệu từ localStorage
             const loadLocalData = (key, defaultValue) => {
                 try {
@@ -749,6 +758,16 @@
                 ]);
             });
 
+            // Cấu hình dịch vụ Email gửi cảnh báo
+            const [emailSettings, setEmailSettings] = useState(() => {
+                return loadLocalData('freshkeep_email_settings', {
+                    serviceId: '',
+                    templateId: '',
+                    publicKey: '',
+                    recipientEmail: 'your-email@gmail.com'
+                });
+            });
+
             const [searchQuery, setSearchQuery] = useState('');
             const [activeTab, setActiveTab] = useState('storage'); 
             const [activeCompartment, setActiveCompartment] = useState('Tất cả');
@@ -782,6 +801,7 @@
             const [shoppingCategory, setShoppingCategory] = useState('Rau củ & Trái cây');
             const [isScanning, setIsScanning] = useState(false);
             const [scannerCameraSimulation, setScannerCameraSimulation] = useState(false);
+            const [scannerError, setScannerError] = useState(null);
 
             // Thành viên Co-living & Đồng bộ dữ liệu
             const [inviteName, setInviteName] = useState('');
@@ -819,6 +839,10 @@
             useEffect(() => {
                 localStorage.setItem('freshkeep_my_groups', JSON.stringify(myGroups));
             }, [myGroups]);
+
+            useEffect(() => {
+                localStorage.setItem('freshkeep_email_settings', JSON.stringify(emailSettings));
+            }, [emailSettings]);
 
             // Đồng bộ dữ liệu liên tục tương ứng với Group ID đang làm việc
             useEffect(() => {
@@ -863,6 +887,169 @@
                 setShoppingList(loadedShopping);
                 setRoommates(loadedRoommates);
             }, [groupId]);
+
+            // Khởi chạy camera thực tế khi modal quét barcode được mở
+            useEffect(() => {
+                if (scannerCameraSimulation) {
+                    setScannerError(null);
+                    // Đợi DOM được render đầy đủ
+                    setTimeout(() => {
+                        try {
+                            const html5QrCode = new Html5Qrcode("real-camera-reader");
+                            html5QrCodeRef.current = html5QrCode;
+
+                            const qrCodeSuccessCallback = (decodedText) => {
+                                handleScannedBarcodeValue(decodedText);
+                                stopRealCameraScanner();
+                            };
+
+                            const config = { 
+                                fps: 15, 
+                                qrbox: { width: 280, height: 160 } 
+                            };
+
+                            html5QrCode.start(
+                                { facingMode: "environment" }, 
+                                config, 
+                                qrCodeSuccessCallback
+                            ).catch(err => {
+                                console.warn("Không thể khởi động camera sau, thử fallback camera mặc định:", err);
+                                // Thử kết nối camera bất kỳ khả dụng
+                                html5QrCode.start(
+                                    { facingMode: "user" },
+                                    config,
+                                    qrCodeSuccessCallback
+                                ).catch(cameraErr => {
+                                    setScannerError("Không tìm thấy camera hoặc quyền truy cập camera bị từ chối.");
+                                    console.error(cameraErr);
+                                });
+                            });
+                        } catch (e) {
+                            setScannerError("Lỗi khởi tạo mô-đun camera.");
+                            console.error(e);
+                        }
+                    }, 300);
+                } else {
+                    stopRealCameraScanner();
+                }
+
+                return () => {
+                    stopRealCameraScanner();
+                };
+            }, [scannerCameraSimulation]);
+
+            const stopRealCameraScanner = () => {
+                if (html5QrCodeRef.current) {
+                    if (html5QrCodeRef.current.isScanning) {
+                        html5QrCodeRef.current.stop().then(() => {
+                            console.log("Đã dừng luồng camera an toàn.");
+                        }).catch(err => console.warn("Lỗi khi dừng camera:", err));
+                    }
+                    html5QrCodeRef.current = null;
+                }
+            };
+
+            const handleScannedBarcodeValue = (code) => {
+                playScanBeep();
+                const product = barcodeDatabase[code];
+                if (product) {
+                    const fallbackDays = ExpiryEngine.getFallbackDays(product.name, product.category, product.compartment);
+                    const targetDate = new Date();
+                    targetDate.setDate(targetDate.getDate() + fallbackDays);
+                    const expiryDate = targetDate.toISOString().split('T')[0];
+
+                    const scannedItem = {
+                        name: product.name,
+                        quantity: product.quantity,
+                        category: product.category,
+                        compartment: product.compartment,
+                        expiryDate: expiryDate,
+                        isPediatricCritical: product.compartment === 'Ngăn đồ ăn dặm',
+                        isCustom: false
+                    };
+                    addProcessedFoodItem(scannedItem);
+                    setLiveActivityToast(`Khớp dữ liệu: ${product.name}!`);
+                } else {
+                    // Nếu là sản phẩm lạ chưa có trong database
+                    const parsedStrange = {
+                        name: `Mã sản phẩm #${code}`,
+                        quantity: "1 phần",
+                        category: "Khác",
+                        compartment: "Ngăn mát",
+                        expiryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        isPediatricCritical: false,
+                        isCustom: true
+                    };
+                    setStrangeItemToConfirm(parsedStrange);
+                    setLiveActivityToast("Phát hiện mã vạch mới. Đang cấu hình phương án bảo quản...");
+                }
+                setScannerCameraSimulation(false);
+            };
+
+            /* ==========================================================
+               GỬI THÔNG BÁO QUA EMAIL CHÍNH THỨC (GMAIL)
+               ========================================================== */
+            const handleSendGmailNotification = () => {
+                // Lọc thực phẩm hết hạn hoặc sắp hết hạn (trong 3 ngày)
+                const targetAlertItems = items.filter(item => {
+                    const info = ExpiryEngine.calculate(item, warnDaysLimit, pediatricWarnLimit);
+                    return info.daysRemaining <= 3;
+                });
+
+                if (targetAlertItems.length === 0) {
+                    triggerNotification("📧 Gửi Email báo cáo", "Tủ lạnh hiện tại không có thực phẩm nào sắp hết hạn hoặc đã quá hạn.");
+                    return;
+                }
+
+                const emailTitle = `[FRESHKEEP ALERT] Báo Cáo Thực Phẩm Quá Hạn & Cần Sử Dụng Gấp - ${groupName}`;
+                let emailBody = `Xin chào các thành viên nhóm ${groupName},\n\n`;
+                emailBody += `Đây là thông báo tự động từ FreshKeep App. Dưới đây là danh sách thực phẩm cần xử lý khẩn cấp:\n\n`;
+                
+                targetAlertItems.forEach((i, idx) => {
+                    const info = ExpiryEngine.calculate(i, warnDaysLimit, pediatricWarnLimit);
+                    const statusText = info.daysRemaining < 0 ? `ĐÃ HẾT HẠN (${Math.abs(info.daysRemaining)} ngày)` : `Sắp hết hạn (Còn ${info.daysRemaining} ngày)`;
+                    emailBody += `${idx + 1}. ${i.name} - Số lượng: ${i.quantity} | Vị trí: ${i.compartment} | Trạng thái: ${statusText}\n`;
+                });
+
+                emailBody += `\nVui lòng kiểm tra lại tủ lạnh vật lý và lên kế hoạch chế biến phù hợp để tránh lãng phí.\n`;
+                emailBody += `Trân trọng,\nĐội ngũ FreshKeep 🍊.`;
+
+                // Kiểm tra xem EmailJS đã được thiết lập đầy đủ chưa
+                if (emailSettings.serviceId && emailSettings.templateId && emailSettings.publicKey) {
+                    setLiveActivityToast("Đang gửi email tự động qua EmailJS...");
+                    
+                    // Khởi tạo EmailJS
+                    emailjs.init(emailSettings.publicKey);
+
+                    const templateParams = {
+                        subject_title: emailTitle,
+                        recipient_email: emailSettings.recipientEmail,
+                        group_name: groupName,
+                        content_body: emailBody
+                    };
+
+                    emailjs.send(emailSettings.serviceId, emailSettings.templateId, templateParams)
+                        .then((response) => {
+                            console.log('EMAILJS SUCCESS!', response.status, response.text);
+                            triggerNotification("📧 Email gửi thành công", `Báo cáo đã gửi tới địa chỉ ${emailSettings.recipientEmail}`);
+                            setLiveActivityToast("Đã hoàn tất gửi email thông báo!");
+                        }, (error) => {
+                            console.error('EMAILJS FAILED...', error);
+                            triggerNotification("❌ Gửi Email thất bại", "Vui lòng kiểm tra lại cấu hình thông tin EmailJS.");
+                            setLiveActivityToast("Lỗi gửi email. Chuyển sang fallback.");
+                            triggerGmailRedirectFallback(emailSettings.recipientEmail, emailTitle, emailBody);
+                        });
+                } else {
+                    // Cơ chế Fallback an toàn: Mở giao diện soạn thư trực tiếp của Gmail
+                    triggerGmailRedirectFallback(emailSettings.recipientEmail, emailTitle, emailBody);
+                }
+            };
+
+            const triggerGmailRedirectFallback = (recipient, subject, body) => {
+                setLiveActivityToast("Đang mở trình duyệt Gmail soạn thư...");
+                const formattedUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.open(formattedUrl, '_blank');
+            };
 
             // ==========================================================
             // CƠ CHẾ ĐỒNG BỘ THỜI GIAN THỰC GIỮA CÁC TAB (STORAGE EVENT)
@@ -1142,38 +1329,6 @@
                 setShoppingList(prev => [...prev, newItem]);
                 setShoppingInput('');
                 setLiveActivityToast(`Đã thêm "${newItem.name}" vào Sổ đi chợ.`);
-            };
-
-            const startBarcodeScanSimulation = (code) => {
-                setIsScanning(true);
-                setLiveActivityToast("Đang phân tích thông tin mã vạch...");
-                
-                setTimeout(() => {
-                    playScanBeep();
-                    const product = barcodeDatabase[code];
-                    if (product) {
-                        const fallbackDays = ExpiryEngine.getFallbackDays(product.name, product.category, product.compartment);
-                        const targetDate = new Date();
-                        targetDate.setDate(targetDate.getDate() + fallbackDays);
-                        const expiryDate = targetDate.toISOString().split('T')[0];
-
-                        const scannedItem = {
-                            name: product.name,
-                            quantity: product.quantity,
-                            category: product.category,
-                            compartment: product.compartment,
-                            expiryDate: expiryDate,
-                            isPediatricCritical: product.compartment === 'Ngăn đồ ăn dặm',
-                            isCustom: false
-                        };
-                        addProcessedFoodItem(scannedItem);
-                        setLiveActivityToast(`Mã vạch khớp: ${product.name}!`);
-                    } else {
-                        setLiveActivityToast("Không tìm thấy thông tin sản phẩm trong cơ sở dữ liệu mã vạch.");
-                    }
-                    setIsScanning(false);
-                    setScannerCameraSimulation(false);
-                }, 1500);
             };
 
             const handleGenerateQrSync = () => {
@@ -2215,13 +2370,21 @@
                                 {/* TAB 2: SMART KITCHEN */}
                                 {activeTab === 'smart-kitchen' && (
                                     <div className="flex-1 flex flex-col gap-4 animate-fade-in">
-                                        <div className="bg-orange-50 border border-orange-200/60 p-4 rounded-2xl">
-                                            <h4 className="text-xs font-black text-orange-950 uppercase tracking-widest mb-1 flex items-center gap-1.5 font-sans">
-                                                <span>🚨</span> CHẾ ĐỘ GIẢI CỨU THỰC PHẨM SẮP HẾT HẠN
-                                            </h4>
-                                            <p className="text-[10px] text-orange-900 leading-relaxed font-semibold font-sans">
-                                                Hệ thống lọc các thực phẩm có nhãn <strong className="text-red-600 animate-pulse font-sans">SẮP HẾT HẠN</strong> và đề xuất thực đơn để tối ưu hóa nguồn nguyên liệu.
-                                            </p>
+                                        <div className="bg-orange-50 border border-orange-200/60 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3">
+                                            <div className="flex-1 min-w-[240px]">
+                                                <h4 className="text-xs font-black text-orange-950 uppercase tracking-widest mb-1 flex items-center gap-1.5 font-sans">
+                                                    <span>🚨</span> CHẾ ĐỘ GIẢI CỨU THỰC PHẨM SẮP HẾT HẠN
+                                                </h4>
+                                                <p className="text-[10px] text-orange-900 leading-relaxed font-semibold font-sans">
+                                                    Hệ thống lọc các thực phẩm có nhãn <strong className="text-red-600 animate-pulse font-sans">SẮP HẾT HẠN</strong>. Bạn có thể gửi báo cáo trực tiếp qua Gmail cho cả nhà.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={handleSendGmailNotification}
+                                                className="bg-red-600 hover:bg-red-700 text-white font-black px-4 py-2 rounded-xl text-xs transition shadow-lg flex items-center gap-1.5"
+                                            >
+                                                📧 Gửi Gmail Cảnh Báo
+                                            </button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[300px] pr-1">
@@ -2910,6 +3073,61 @@
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* CẤU HÌNH GỬI THÔNG BÁO EMAIL CHÍNH THỨC */}
+                                                <div className="bg-stone-50/60 p-5 rounded-3xl border border-stone-200/60 shadow-sm space-y-4">
+                                                    <h4 className="font-extrabold text-xs text-amber-950 uppercase tracking-widest flex items-center gap-2">
+                                                        <span>📧</span> Cấu hình Email Thông Báo (Gmail)
+                                                    </h4>
+                                                    <p className="text-[10px] text-stone-500 leading-relaxed font-semibold">
+                                                        Hệ thống tích hợp <strong>EmailJS</strong> để tự động hóa gửi thông báo. Nếu chưa cài đặt, hệ thống sẽ mở trực tiếp trang soạn thư của Gmail làm phương án dự phòng.
+                                                    </p>
+                                                    
+                                                    <div className="bg-white p-4 rounded-2xl border border-stone-100 space-y-3">
+                                                        <div>
+                                                            <label className="block text-[9px] font-bold text-stone-400 uppercase mb-1">Email Nhận Báo Cáo</label>
+                                                            <input 
+                                                                type="email" 
+                                                                placeholder="your-email@gmail.com"
+                                                                value={emailSettings.recipientEmail}
+                                                                onChange={(e) => setEmailSettings({...emailSettings, recipientEmail: e.target.value})}
+                                                                className="w-full border-2 border-stone-100 rounded-xl px-3 py-2 text-xs focus:outline-none font-bold text-stone-700"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                            <div>
+                                                                <label className="block text-[9px] font-bold text-stone-400 uppercase mb-1">Service ID</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="service_xxx"
+                                                                    value={emailSettings.serviceId}
+                                                                    onChange={(e) => setEmailSettings({...emailSettings, serviceId: e.target.value})}
+                                                                    className="w-full border-2 border-stone-100 rounded-xl px-2 py-1.5 text-[11px] focus:outline-none"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[9px] font-bold text-stone-400 uppercase mb-1">Template ID</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="template_xxx"
+                                                                    value={emailSettings.templateId}
+                                                                    onChange={(e) => setEmailSettings({...emailSettings, templateId: e.target.value})}
+                                                                    className="w-full border-2 border-stone-100 rounded-xl px-2 py-1.5 text-[11px] focus:outline-none"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[9px] font-bold text-stone-400 uppercase mb-1">Public Key</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="user_xxx"
+                                                                    value={emailSettings.publicKey}
+                                                                    onChange={(e) => setEmailSettings({...emailSettings, publicKey: e.target.value})}
+                                                                    className="w-full border-2 border-stone-100 rounded-xl px-2 py-1.5 text-[11px] focus:outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {/* CỘT PHẢI: CẤU HÌNH VẬN HÀNH & CẢNH BÁO */}
@@ -3174,54 +3392,54 @@
                         </div>
                     )}
 
-                    {/* INTERACTIVE REALISTIC BARCODE SCANNER MODAL */}
+                    {/* INTERACTIVE REALISTIC BARCODE SCANNER MODAL WITH ACTUAL CAMERA STREAM */}
                     {scannerCameraSimulation && (
                         <div className="fixed inset-0 bg-black/80 flex flex-col justify-center items-center z-50 p-4 backdrop-blur-md">
                             <div className="bg-stone-900 rounded-[2.5rem] max-w-lg w-full p-6 border border-stone-800 shadow-2xl relative overflow-hidden">
                                 <button 
                                     onClick={() => setScannerCameraSimulation(false)}
-                                    className="absolute top-6 right-6 text-stone-400 hover:text-white font-extrabold text-sm z-10 font-sans"
+                                    className="absolute top-6 right-6 text-stone-400 hover:text-white font-extrabold text-sm z-50 font-sans"
                                 >
                                     ✕ Đóng camera
                                 </button>
                                 
                                 <div className="text-center mb-4">
                                     <h3 className="text-white font-extrabold text-lg flex items-center justify-center gap-2 font-sans">
-                                        <span className="animate-pulse">🔴</span> Trình Quét Mã Vạch Hàng Tiêu Dùng
+                                        <span className="animate-pulse text-red-500">●</span> Trình Quét Mã Vạch Thiết Bị
                                     </h3>
-                                    <p className="text-stone-400 text-[11px] mt-1 font-sans">Đưa mã vạch của sản phẩm vào hồng tâm khung quét để nhận diện tự động</p>
+                                    <p className="text-stone-400 text-[11px] mt-1 font-sans">Đặt mã vạch vào trung tâm tiêu điểm camera để phân tích dữ liệu</p>
                                 </div>
 
-                                {/* Khung mô phỏng camera quét mã vạch */}
+                                {/* Khu vực kết nối luồng camera thực tế */}
                                 <div className="relative w-full h-64 bg-stone-950 rounded-2xl border border-stone-800 flex items-center justify-center overflow-hidden">
-                                    <div className="absolute inset-0 bg-gradient-to-b from-stone-900/40 via-stone-950/70 to-stone-900/40 opacity-80"></div>
+                                    {scannerError ? (
+                                        <div className="p-4 text-center z-10">
+                                            <p className="text-amber-500 text-xs font-bold font-sans mb-3">{scannerError}</p>
+                                            <p className="text-stone-500 text-[10px] font-sans">Hệ thống sẽ cho phép bạn quét thử nghiệm bằng danh mục sản phẩm phía dưới.</p>
+                                        </div>
+                                    ) : (
+                                        <div id="real-camera-reader" className="w-full h-full object-cover"></div>
+                                    )}
+                                    
                                     <div className="absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] laser-line z-10"></div>
                                     
-                                    <div className="border-2 border-dashed border-emerald-400 w-64 h-32 rounded-lg relative flex flex-col justify-between p-2 z-10 shadow-[0_0_20px_rgba(52,211,153,0.15)]">
-                                        <span className="text-[10px] text-emerald-400 font-extrabold tracking-widest text-center self-center uppercase animate-pulse font-sans">Đang rà soát Barcode...</span>
+                                    <div className="absolute border-2 border-dashed border-emerald-400 w-64 h-32 rounded-lg pointer-events-none flex flex-col justify-between p-2 z-10">
+                                        <span className="text-[10px] text-emerald-400 font-extrabold tracking-widest text-center self-center uppercase animate-pulse font-sans">CAMERA ACTIVE</span>
                                         <div className="flex justify-between text-stone-500 font-mono text-[9px]">
-                                            <span>[UPC-EAN]</span>
-                                            <span>100% FOCUS</span>
+                                            <span>[EAN-13]</span>
+                                            <span>AUTO FOCUS</span>
                                         </div>
                                     </div>
-
-                                    {isScanning && (
-                                        <div className="absolute inset-0 bg-stone-950/90 flex flex-col items-center justify-center gap-3 z-20">
-                                            <div className="w-12 h-12 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-emerald-400 text-xs font-black animate-pulse font-sans">ĐANG PHÂN TÍCH THÔNG TIN SẢN PHẨM...</p>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="mt-5 space-y-3">
-                                    <p className="text-stone-400 text-xs font-bold uppercase tracking-wider font-sans">Chọn sản phẩm mẫu thực tế để quét:</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <p className="text-stone-400 text-xs font-bold uppercase tracking-wider font-sans">Hoặc chọn sản phẩm mẫu nhanh:</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                                         {Object.entries(barcodeDatabase).map(([code, info]) => (
                                             <button
                                                 key={code}
-                                                disabled={isScanning}
-                                                onClick={() => startBarcodeScanSimulation(code)}
-                                                className="bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white p-2.5 rounded-xl text-left border border-stone-700 transition flex flex-col justify-between gap-1 disabled:opacity-50 min-h-[58px]"
+                                                onClick={() => handleScannedBarcodeValue(code)}
+                                                className="bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white p-2.5 rounded-xl text-left border border-stone-700 transition flex flex-col justify-between gap-1 min-h-[58px]"
                                             >
                                                 <div className="flex justify-between items-center w-full font-sans">
                                                     <span className="font-extrabold text-[11px] truncate max-w-[140px]">{info.name}</span>
@@ -3293,7 +3511,7 @@
                                     <span className="text-4xl block mb-2">🧐</span>
                                     <h3 className="font-black text-lg text-stone-900 font-sans">Phát Hiện Nguyên Liệu Lạ!</h3>
                                     <p className="text-[11px] text-stone-500 leading-relaxed mt-1 font-sans">
-                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc danh mục chuẩn. Vui lòng định hình phương án bảo quan:
+                                        Món <strong>"{strangeItemToConfirm.name}"</strong> không thuộc danh mục chuẩn. Vui lòng định hình phương án bảo quản:
                                     </p>
                                 </div>
                                 <div className="space-y-4 font-sans">
@@ -3782,3 +4000,4 @@
 <!-- END: FRESHKEEP ORANGE AI CHATBOT INTEGRATION -->
 </body>
 </html>
+
